@@ -427,6 +427,8 @@ function WishlistManager() {
     await api("wishlist", "DELETE", { id });
     load();
   };
+  const [openPending, setOpenPending] = useState(true);
+  const [openCompleted, setOpenCompleted] = useState(false);
   return (
     <div>
       <AddRow
@@ -436,59 +438,89 @@ function WishlistManager() {
           load();
         }}
       />
-      <h3 className="mt-3 mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-        Pending ({pending.length})
-      </h3>
-      {pending.length === 0 ? (
-        <p className="text-sm text-zinc-400">Nothing pending.</p>
-      ) : (
-        <ul className="space-y-2">
-          {pending.map((w) => (
-            <li
-              key={String(w.id)}
-              className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
-            >
-              <span className="flex-1 whitespace-pre-wrap">{String(w.body)}</span>
-              <button
-                onClick={() => patch(w.id, "done")}
-                className="text-xs text-green-600 hover:underline"
-                title="mark completed"
-              >
-                Done
-              </button>
-              <Del onClick={() => del(w.id)} />
-            </li>
-          ))}
-        </ul>
-      )}
-      {completed.length > 0 && (
-        <>
-          <h3 className="mt-4 mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-            Completed ({completed.length})
-          </h3>
-          <ul className="space-y-1">
-            {completed.map((w) => (
+      <CollapseHeader
+        open={openPending}
+        onToggle={() => setOpenPending((v) => !v)}
+        label={`Pending (${pending.length})`}
+      />
+      {openPending &&
+        (pending.length === 0 ? (
+          <p className="text-sm text-zinc-400">Nothing pending.</p>
+        ) : (
+          <ul className="space-y-2">
+            {pending.map((w) => (
               <li
                 key={String(w.id)}
-                className="flex items-start gap-2 rounded-lg border border-zinc-200 p-2 text-sm text-zinc-500 dark:border-zinc-800"
+                className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
               >
-                <span className="flex-1 whitespace-pre-wrap line-through">
+                <span className="flex-1 whitespace-pre-wrap">
                   {String(w.body)}
                 </span>
                 <button
-                  onClick={() => patch(w.id, "open")}
-                  className="text-xs hover:underline"
-                  title="move back to pending"
+                  onClick={() => patch(w.id, "done")}
+                  className="text-xs text-green-600 hover:underline"
+                  title="mark completed"
                 >
-                  Reopen
+                  Done
                 </button>
                 <Del onClick={() => del(w.id)} />
               </li>
             ))}
           </ul>
+        ))}
+      {completed.length > 0 && (
+        <>
+          <CollapseHeader
+            open={openCompleted}
+            onToggle={() => setOpenCompleted((v) => !v)}
+            label={`Completed (${completed.length})`}
+          />
+          {openCompleted && (
+            <ul className="space-y-1">
+              {completed.map((w) => (
+                <li
+                  key={String(w.id)}
+                  className="flex items-start gap-2 rounded-lg border border-zinc-200 p-2 text-sm text-zinc-500 dark:border-zinc-800"
+                >
+                  <span className="flex-1 whitespace-pre-wrap line-through">
+                    {String(w.body)}
+                  </span>
+                  <button
+                    onClick={() => patch(w.id, "open")}
+                    className="text-xs hover:underline"
+                    title="move back to pending"
+                  >
+                    Reopen
+                  </button>
+                  <Del onClick={() => del(w.id)} />
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       )}
     </div>
+  );
+}
+
+// Clickable section header with a disclosure triangle.
+function CollapseHeader({
+  open,
+  onToggle,
+  label,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="mt-3 mb-1 flex w-full items-center gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+    >
+      <span className="inline-block w-3 text-[10px]">{open ? "▼" : "▶"}</span>
+      {label}
+    </button>
   );
 }
 

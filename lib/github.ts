@@ -85,6 +85,13 @@ export async function dispatchRun(): Promise<void> {
     throw new Error(`dispatch ${r.status}: ${await r.text()}`);
 }
 
+export async function getPRBody(number: number): Promise<string> {
+  const r = await gh(`/repos/${REPO}/pulls/${number}`);
+  if (!r.ok) throw new Error(`get pr ${r.status}: ${await r.text()}`);
+  const j = await r.json();
+  return (j.body as string) ?? "";
+}
+
 export async function mergePR(number: number): Promise<void> {
   const r = await gh(`/repos/${REPO}/pulls/${number}/merge`, {
     method: "PUT",

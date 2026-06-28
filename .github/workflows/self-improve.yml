@@ -39,7 +39,7 @@ jobs:
           echo "# Wishlist (most recent first)" > improvement-input.md
           if [ -n "$APP_URL" ]; then
             curl -fsS "$APP_URL/api/wishlist" \
-              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{for(const w of JSON.parse(s)){if(w.status!=='done')console.log('- '+w.body)}}catch{}})" \
+              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{for(const w of JSON.parse(s)){if(w.status!=='done')console.log('- [#'+w.id+'] '+w.body)}}catch{}})" \
               >> improvement-input.md || echo "(could not fetch wishlist)" >> improvement-input.md
           else
             echo "(APP_URL not set — no wishlist available)" >> improvement-input.md
@@ -70,6 +70,9 @@ jobs:
             3. Run `npm run build` and fix any errors until it passes.
             4. Write a short markdown summary (what you changed and why) to the
                file ${{ runner.temp }}/pr-body.md using the Write tool, overwriting it.
+               If your change implements a specific wishlist item, the wishlist
+               entries are labelled like "[#5]" — end the file with a line
+               `Wishlist-Item: #5` (its id) so it can be archived on approval.
 
             Do NOT use git, and do NOT commit — just leave your edits in the
             working tree. A later step opens the pull request. Do not delete
