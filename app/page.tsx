@@ -776,12 +776,16 @@ function Manage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entered]);
 
-  const act = async (action: string, number?: number) => {
+  const act = async (
+    action: string,
+    number?: number,
+    extra?: Record<string, unknown>,
+  ) => {
     setBusy(true);
     const res = await fetch("/api/manage", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-passcode": passcode },
-      body: JSON.stringify({ action, number }),
+      body: JSON.stringify({ action, number, ...extra }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -949,13 +953,30 @@ function Manage() {
                     {String(p.body)}
                   </p>
                 ) : null}
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <button
                     onClick={() => act("merge", p.number as number)}
                     disabled={busy}
                     className="rounded-lg bg-green-600 px-3 py-1.5 text-xs text-white disabled:opacity-50"
                   >
                     Approve &amp; deploy
+                  </button>
+                  <button
+                    onClick={() => {
+                      const feedback =
+                        window.prompt(
+                          "What would you like done differently? (optional) — this proposal will be dismissed and the agent will retry with a different approach.",
+                        ) ?? undefined;
+                      if (feedback === undefined) return; // cancelled
+                      act("revise", p.number as number, {
+                        title: p.title,
+                        feedback,
+                      });
+                    }}
+                    disabled={busy}
+                    className="rounded-lg border border-amber-400 px-3 py-1.5 text-xs text-amber-700 disabled:opacity-50 dark:border-amber-700 dark:text-amber-400"
+                  >
+                    Request different solution
                   </button>
                   <button
                     onClick={() => act("close", p.number as number)}
