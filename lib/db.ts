@@ -38,6 +38,7 @@ export function ensureSchema(): Promise<void> {
         `CREATE TABLE IF NOT EXISTS habits (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
+          minutes INTEGER,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )`,
         `CREATE TABLE IF NOT EXISTS habit_logs (
@@ -75,6 +76,25 @@ export function ensureSchema(): Promise<void> {
       ],
       "write",
     );
+    // Lightweight migrations for columns added to tables that may already
+    // exist in production. ALTER TABLE ADD COLUMN throws if the column is
+    // already there, so we run each one tolerantly.
+    await addColumnIfMissing(c, "habits", "minutes", "INTEGER");
   })();
   return _ready;
+}
+
+// Add a column to an existing table, ignoring the error raised when it is
+// already present. Keeps migrations idempotent without a version table.
+async function addColumnIfMissing(
+  c: Client,
+  table: string,
+  column: string,
+  type: string,
+): Promise<void> {
+  try {
+    await c.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  } catch {
+    // Column already exists — nothing to do.
+  }
 }
