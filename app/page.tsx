@@ -206,19 +206,44 @@ function AddRow({ placeholder, onAdd }: { placeholder: string; onAdd: (v: string
 
 function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [title, setTitle] = useState("");
+  const [due, setDue] = useState("");
   const load = () => api("tasks").then(setRows);
   useEffect(() => {
     load();
   }, []);
+  const add = async () => {
+    if (!title.trim()) return;
+    await api("tasks", "POST", { title: title.trim(), due: due || null });
+    setTitle("");
+    setDue("");
+    load();
+  };
   return (
     <div>
-      <AddRow
-        placeholder="New task…"
-        onAdd={async (title) => {
-          await api("tasks", "POST", { title });
-          load();
-        }}
-      />
+      <div className="mb-3 flex gap-2">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder="New task…"
+          className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <input
+          value={due}
+          onChange={(e) => setDue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          type="date"
+          title="Due date (optional) — adds it to your calendar feed"
+          className="rounded-lg border border-zinc-300 px-2 py-2 text-sm text-zinc-500 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <button
+          onClick={add}
+          className="rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
+        >
+          Add
+        </button>
+      </div>
       <ul className="space-y-1">
         {rows.map((t) => (
           <li
@@ -235,14 +260,49 @@ function Tasks() {
             />
             <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
               {String(t.title)}
-              {t.due ? <span className="ml-2 text-xs text-zinc-400">{String(t.due)}</span> : null}
             </span>
+            <DueField
+              value={t.due ? String(t.due) : ""}
+              onSave={async (d) => {
+                await api("tasks", "PATCH", { id: t.id, due: d });
+                load();
+              }}
+            />
             <Del onClick={async () => { await api("tasks", "DELETE", { id: t.id }); load(); }} />
           </li>
         ))}
       </ul>
       <CalendarSubscribe />
     </div>
+  );
+}
+
+// Inline due-date editor for a task. A blank value clears the due date. The
+// chosen date flows straight into the .ics calendar feed (see CalendarSubscribe).
+function DueField({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (d: string) => void;
+}) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  return (
+    <input
+      value={v}
+      onChange={(e) => {
+        setV(e.target.value);
+        onSave(e.target.value);
+      }}
+      type="date"
+      title="Due date — shows on your calendar feed (blank to clear)"
+      className={`rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-zinc-300 focus:border-zinc-500 focus:outline-none dark:hover:border-zinc-700 ${
+        v ? "text-zinc-500" : "text-zinc-300"
+      }`}
+    />
   );
 }
 
