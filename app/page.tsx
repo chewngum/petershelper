@@ -289,19 +289,46 @@ function CalendarSubscribe() {
 
 function Habits() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [name, setName] = useState("");
+  const [minutes, setMinutes] = useState("");
   const load = () => api("habits").then(setRows);
   useEffect(() => {
     load();
   }, []);
+  const add = async () => {
+    if (!name.trim()) return;
+    await api("habits", "POST", { name: name.trim(), minutes });
+    setName("");
+    setMinutes("");
+    load();
+  };
   return (
     <div>
-      <AddRow
-        placeholder="New habit…"
-        onAdd={async (name) => {
-          await api("habits", "POST", { name });
-          load();
-        }}
-      />
+      <div className="mb-3 flex gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder="New habit…"
+          className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <input
+          value={minutes}
+          onChange={(e) => setMinutes(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          type="number"
+          min="1"
+          placeholder="min"
+          title="Minutes this habit takes (optional)"
+          className="w-20 rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <button
+          onClick={add}
+          className="rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
+        >
+          Add
+        </button>
+      </div>
       <ul className="space-y-1">
         {rows.map((h) => (
           <li
@@ -322,6 +349,13 @@ function Habits() {
               {h.doneToday ? "✓" : ""}
             </button>
             <span className="flex-1 text-sm">{String(h.name)}</span>
+            <MinutesField
+              value={h.minutes == null ? "" : String(h.minutes)}
+              onSave={async (m) => {
+                await api("habits", "PATCH", { id: h.id, minutes: m });
+                load();
+              }}
+            />
             <span
               className="text-xs text-zinc-400"
               title="Days completed since you added this habit"
@@ -333,6 +367,39 @@ function Habits() {
         ))}
       </ul>
     </div>
+  );
+}
+
+// Inline editor for a habit's duration in minutes. Saves on Enter or blur.
+function MinutesField({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (m: string) => void;
+}) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  const commit = () => {
+    if (v !== value) onSave(v);
+  };
+  return (
+    <span className="flex items-center text-xs text-zinc-400">
+      <input
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+        type="number"
+        min="1"
+        placeholder="—"
+        title="Minutes this habit takes"
+        className="w-12 rounded border border-transparent bg-transparent px-1 py-0.5 text-right text-xs hover:border-zinc-300 focus:border-zinc-500 focus:outline-none dark:hover:border-zinc-700"
+      />
+      min
+    </span>
   );
 }
 

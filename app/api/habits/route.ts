@@ -62,23 +62,39 @@ export async function GET() {
   return NextResponse.json(rows);
 }
 
+// Parse a minutes value into a positive integer, or null to clear it.
+function parseMinutes(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export async function POST(req: NextRequest) {
   await ensureSchema();
-  const { name } = await req.json();
+  const { name, minutes } = await req.json();
   if (!name?.trim())
     return NextResponse.json({ error: "name required" }, { status: 400 });
   await db().execute({
-    sql: "INSERT INTO habits (name) VALUES (?)",
-    args: [name.trim()],
+    sql: "INSERT INTO habits (name, minutes) VALUES (?, ?)",
+    args: [name.trim(), parseMinutes(minutes)],
   });
   return NextResponse.json({ ok: true });
 }
 
-// Toggle today's completion for a habit.
+// Either set a habit's duration (when `minutes` is provided) or toggle today's
+// completion (when it isn't).
 export async function PATCH(req: NextRequest) {
   await ensureSchema();
-  const { id } = await req.json();
+  const body = await req.json();
+  const { id } = body;
   const c = db();
+  if ("minutes" in body) {
+    await c.execute({
+      sql: "UPDATE habits SET minutes = ? WHERE id = ?",
+      args: [parseMinutes(body.minutes), id],
+    });
+    return NextResponse.json({ ok: true });
+  }
   const today = habitDay();
   const existing = await c.execute({
     sql: "SELECT id FROM habit_logs WHERE habit_id = ? AND day = ?",
