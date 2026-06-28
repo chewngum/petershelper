@@ -73,7 +73,38 @@ function Chat() {
     setInput("");
     setMsgs((m) => [...m, { role: "user", content: text }]);
     setBusy(true);
-    await api("chat", "POST", { message: text });
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      const reader = res.body?.getReader();
+      if (reader) {
+        // Stream the assistant's reply in, appending each chunk as it arrives.
+        const decoder = new TextDecoder();
+        let acc = "";
+        let started = false;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          acc += decoder.decode(value, { stream: true });
+          if (!started) {
+            started = true;
+            setBusy(false);
+            setMsgs((m) => [...m, { role: "assistant", content: acc }]);
+          } else {
+            setMsgs((m) => {
+              const copy = m.slice();
+              copy[copy.length - 1] = { role: "assistant", content: acc };
+              return copy;
+            });
+          }
+        }
+      }
+    } catch {
+      // Fall through to reload, which surfaces whatever was persisted.
+    }
     setBusy(false);
     load();
   };
