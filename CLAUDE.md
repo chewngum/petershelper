@@ -34,6 +34,6 @@ Every day a GitHub Action runs you against this repo (see [.github/workflows/sel
 2. Pick **ONE** small, safe, high-value improvement — prioritise wishlist items, then obvious UX/quality wins.
 3. Implement it. Keep the change focused and the diff small.
 4. Run `npm run build` and fix any errors.
-5. Open a pull request describing what you changed and why. **Do not push to the default branch directly** — Peter approves by merging the PR.
+5. Leave the changes in the working tree; the workflow opens a pull request. Peter approves it from the app's **Manage** tab (the "Approve & deploy" button), which merges the PR and deploys it. **Do not push to the default branch directly.**
 
-Guardrails: one improvement per run; never delete user data or features; never commit secrets; if nothing is worth changing, open no PR.
+Guardrails: one improvement per run; keep the change focused and the diff small; never delete user data or features; never commit secrets; if nothing is worth changing, make no edits and the run will open no PR.

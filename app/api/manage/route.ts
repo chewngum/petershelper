@@ -43,36 +43,43 @@ export async function GET(req: NextRequest) {
   if (!authed(req))
     return NextResponse.json({ error: "bad passcode" }, { status: 401 });
 
-  const usage = await usageStats();
-
-  // GitHub may be unconfigured (no GH_PAT) — degrade gracefully.
-  let runs: Awaited<ReturnType<typeof listRuns>> = [];
-  let prs: Awaited<ReturnType<typeof listPRs>> = [];
-  let githubError: string | null = null;
   try {
-    [runs, prs] = await Promise.all([listRuns(), listPRs()]);
+    const usage = await usageStats();
+
+    // GitHub may be unconfigured (no GH_PAT) — degrade gracefully.
+    let runs: Awaited<ReturnType<typeof listRuns>> = [];
+    let prs: Awaited<ReturnType<typeof listPRs>> = [];
+    let githubError: string | null = null;
+    try {
+      [runs, prs] = await Promise.all([listRuns(), listPRs()]);
+    } catch (e) {
+      githubError = e instanceof Error ? e.message : String(e);
+    }
+
+    const stats = {
+      runsTotal: runs.length,
+      runsSucceeded: runs.filter((r) => r.conclusion === "success").length,
+      runsFailed: runs.filter((r) => r.conclusion === "failure").length,
+      runInProgress: runs.some((r) => r.status !== "completed"),
+      prsOpen: prs.filter((p) => p.state === "open").length,
+      prsMerged: prs.filter((p) => p.merged_at).length,
+      prsClosed: prs.filter((p) => p.state === "closed" && !p.merged_at).length,
+    };
+
+    return NextResponse.json({
+      latestRun: runs[0] ?? null,
+      runs: runs.slice(0, 10),
+      prs: prs.slice(0, 20),
+      stats,
+      usage,
+      githubError,
+    });
   } catch (e) {
-    githubError = e instanceof Error ? e.message : String(e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
   }
-
-  const stats = {
-    runsTotal: runs.length,
-    runsSucceeded: runs.filter((r) => r.conclusion === "success").length,
-    runsFailed: runs.filter((r) => r.conclusion === "failure").length,
-    runInProgress: runs.some((r) => r.status !== "completed"),
-    prsOpen: prs.filter((p) => p.state === "open").length,
-    prsMerged: prs.filter((p) => p.merged_at).length,
-    prsClosed: prs.filter((p) => p.state === "closed" && !p.merged_at).length,
-  };
-
-  return NextResponse.json({
-    latestRun: runs[0] ?? null,
-    runs: runs.slice(0, 10),
-    prs: prs.slice(0, 20),
-    stats,
-    usage,
-    githubError,
-  });
 }
 
 export async function POST(req: NextRequest) {

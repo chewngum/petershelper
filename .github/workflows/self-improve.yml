@@ -39,7 +39,7 @@ jobs:
           echo "# Wishlist (most recent first)" > improvement-input.md
           if [ -n "$APP_URL" ]; then
             curl -fsS "$APP_URL/api/wishlist" \
-              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{for(const w of JSON.parse(s)){console.log('- '+w.body)}}catch{}})" \
+              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{for(const w of JSON.parse(s)){if(w.status!=='done')console.log('- '+w.body)}}catch{}})" \
               >> improvement-input.md || echo "(could not fetch wishlist)" >> improvement-input.md
           else
             echo "(APP_URL not set — no wishlist available)" >> improvement-input.md
@@ -75,6 +75,8 @@ jobs:
             working tree. A later step opens the pull request. Do not delete
             features or user data. If nothing is worth changing, make no edits.
 
+      # Open the proposal as a PR. Peter approves it from the app's Manage tab
+      # (the Approve & deploy button), which merges it and triggers a deploy.
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:

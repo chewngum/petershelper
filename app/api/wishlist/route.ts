@@ -21,6 +21,17 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+// Mark an item completed ('done') or pending ('open').
+export async function PATCH(req: NextRequest) {
+  await ensureSchema();
+  const { id, status } = await req.json();
+  await db().execute({
+    sql: "UPDATE wishlist SET status = ? WHERE id = ?",
+    args: [status === "done" ? "done" : "open", id],
+  });
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: NextRequest) {
   await ensureSchema();
   const { id } = await req.json();

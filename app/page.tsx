@@ -409,37 +409,98 @@ function Notes() {
   );
 }
 
-function Wishlist() {
+// Shared wishlist UI: capture + Pending list + Completed archive. Used in the
+// Wishlist tab and in the Manage tab's "Goals for the agent" section.
+function WishlistManager() {
   const [rows, setRows] = useState<Row[]>([]);
   const load = () => api("wishlist").then(setRows);
   useEffect(() => {
     load();
   }, []);
+  const pending = rows.filter((w) => w.status !== "done");
+  const completed = rows.filter((w) => w.status === "done");
+  const patch = async (id: unknown, status: string) => {
+    await api("wishlist", "PATCH", { id, status });
+    load();
+  };
+  const del = async (id: unknown) => {
+    await api("wishlist", "DELETE", { id });
+    load();
+  };
   return (
     <div>
-      <p className="mb-3 text-sm text-zinc-500">
-        What should this app do better? Anything you add here is fed to the daily
-        self-improvement agent, which proposes a change as a pull request for you
-        to approve.
-      </p>
       <AddRow
-        placeholder="I wish this app could…"
+        placeholder="e.g. Add a weekly review summary on the home screen…"
         onAdd={async (body) => {
           await api("wishlist", "POST", { body });
           load();
         }}
       />
-      <ul className="space-y-2">
-        {rows.map((w) => (
-          <li
-            key={String(w.id)}
-            className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
-          >
-            <span className="flex-1 whitespace-pre-wrap">{String(w.body)}</span>
-            <Del onClick={async () => { await api("wishlist", "DELETE", { id: w.id }); load(); }} />
-          </li>
-        ))}
-      </ul>
+      <h3 className="mt-3 mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        Pending ({pending.length})
+      </h3>
+      {pending.length === 0 ? (
+        <p className="text-sm text-zinc-400">Nothing pending.</p>
+      ) : (
+        <ul className="space-y-2">
+          {pending.map((w) => (
+            <li
+              key={String(w.id)}
+              className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
+            >
+              <span className="flex-1 whitespace-pre-wrap">{String(w.body)}</span>
+              <button
+                onClick={() => patch(w.id, "done")}
+                className="text-xs text-green-600 hover:underline"
+                title="mark completed"
+              >
+                Done
+              </button>
+              <Del onClick={() => del(w.id)} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {completed.length > 0 && (
+        <>
+          <h3 className="mt-4 mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            Completed ({completed.length})
+          </h3>
+          <ul className="space-y-1">
+            {completed.map((w) => (
+              <li
+                key={String(w.id)}
+                className="flex items-start gap-2 rounded-lg border border-zinc-200 p-2 text-sm text-zinc-500 dark:border-zinc-800"
+              >
+                <span className="flex-1 whitespace-pre-wrap line-through">
+                  {String(w.body)}
+                </span>
+                <button
+                  onClick={() => patch(w.id, "open")}
+                  className="text-xs hover:underline"
+                  title="move back to pending"
+                >
+                  Reopen
+                </button>
+                <Del onClick={() => del(w.id)} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Wishlist() {
+  return (
+    <div>
+      <p className="mb-3 text-sm text-zinc-500">
+        What should this app do better? Pending items are fed to the daily
+        self-improvement agent; mark them done once shipped to move them to the
+        archive.
+      </p>
+      <WishlistManager />
     </div>
   );
 }
@@ -689,8 +750,12 @@ function Manage() {
       {/* History */}
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          History
+          Improvement history
         </h2>
+        <p className="mb-2 text-xs text-zinc-400">
+          Every proposed change — merged (shipped), open (awaiting you), or
+          dismissed.
+        </p>
         <ul className="space-y-1 text-sm">
           {data.prs.map((p) => (
             <li key={String(p.number)} className="flex items-center gap-2">
@@ -710,46 +775,20 @@ function Manage() {
   );
 }
 
-// Goals/directions for the self-improvement agent. Writes to the same wishlist
-// the daily run reads, so anything added here is picked up on the next run.
+// Goals/directions for the self-improvement agent. Reuses the wishlist UI, so
+// pending items are picked up on the next run and completed ones are archived.
 function AgentGoals() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const load = () => api("wishlist").then(setRows);
-  useEffect(() => {
-    load();
-  }, []);
   return (
     <section>
       <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-zinc-500">
         Goals for the agent
       </h2>
       <p className="mb-2 text-xs text-zinc-400">
-        Tell the daily agent what to build or improve. Each item is picked up on
-        the next run, and proposed back to you as a pull request above.
+        Tell the daily agent what to build or improve. Pending items are picked
+        up on the next run and proposed back to you as a pull request above; mark
+        them done to archive.
       </p>
-      <AddRow
-        placeholder="e.g. Add a weekly review summary on the home screen…"
-        onAdd={async (body) => {
-          await api("wishlist", "POST", { body });
-          load();
-        }}
-      />
-      <ul className="space-y-2">
-        {rows.map((w) => (
-          <li
-            key={String(w.id)}
-            className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
-          >
-            <span className="flex-1 whitespace-pre-wrap">{String(w.body)}</span>
-            <Del
-              onClick={async () => {
-                await api("wishlist", "DELETE", { id: w.id });
-                load();
-              }}
-            />
-          </li>
-        ))}
-      </ul>
+      <WishlistManager />
     </section>
   );
 }
