@@ -132,46 +132,66 @@ export async function POST(req: NextRequest) {
   const client = new Anthropic();
   const system = `You are Peter's personal life assistant inside an app called PetersHelper. Be concise and proactive. When the user mentions something to do, remember, track, or aim for, use the matching tool to record it — don't just acknowledge it. Current state:\n${await context()}`;
 
-  // Manual tool-use loop: keep calling tools until Claude is done.
-  let reply = "";
-  for (let i = 0; i < 6; i++) {
-    const res: Anthropic.Message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
-      system,
-      tools,
-      messages,
-    });
-    messages.push({ role: "assistant", content: res.content });
+  // Stream the reply back token-by-token. We run the same manual tool-use loop
+  // as before, but pipe each text delta to the client as it's generated and only
+  // persist the final assistant message once the loop is done.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let reply = "";
+      try {
+        for (let i = 0; i < 6; i++) {
+          const s = client.messages.stream({
+            model: MODEL,
+            max_tokens: 1024,
+            system,
+            tools,
+            messages,
+          });
+          s.on("text", (delta) => {
+            reply += delta;
+            controller.enqueue(encoder.encode(delta));
+          });
+          const res = await s.finalMessage();
+          messages.push({ role: "assistant", content: res.content });
 
-    for (const block of res.content) {
-      if (block.type === "text") reply += block.text;
-    }
+          if (res.stop_reason !== "tool_use") break;
 
-    if (res.stop_reason !== "tool_use") break;
-
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
-    for (const block of res.content) {
-      if (block.type === "tool_use") {
-        const out = await runTool(
-          block.name,
-          block.input as Record<string, unknown>,
+          const toolResults: Anthropic.ToolResultBlockParam[] = [];
+          for (const block of res.content) {
+            if (block.type === "tool_use") {
+              const out = await runTool(
+                block.name,
+                block.input as Record<string, unknown>,
+              );
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content: out,
+              });
+            }
+          }
+          messages.push({ role: "user", content: toolResults });
+        }
+      } catch {
+        controller.enqueue(
+          encoder.encode("\n\n[Sorry — something went wrong generating a reply.]"),
         );
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: out,
+      } finally {
+        reply = reply.trim() || "Done.";
+        await c.execute({
+          sql: "INSERT INTO messages (role, content) VALUES ('assistant', ?)",
+          args: [reply],
         });
+        controller.close();
       }
-    }
-    messages.push({ role: "user", content: toolResults });
-  }
-
-  reply = reply.trim() || "Done.";
-  await c.execute({
-    sql: "INSERT INTO messages (role, content) VALUES ('assistant', ?)",
-    args: [reply],
+    },
   });
 
-  return NextResponse.json({ reply });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
 }
