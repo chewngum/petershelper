@@ -1,8 +1,8 @@
 name: Daily self-improvement
 
-# Runs once a day (and on demand). Claude reads Peter's wishlist + the codebase,
-# makes ONE small improvement, and opens a pull request. Merging the PR is how
-# Peter approves; merge auto-deploys via Vercel.
+# Runs once a day (and on demand). Claude reads Peter's wishlist + the codebase
+# and edits files to make ONE small improvement; a dedicated step then opens a
+# pull request. Merging the PR is how Peter approves; merge auto-deploys via Vercel.
 
 on:
   schedule:
@@ -30,8 +30,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Pull the live wishlist so Claude knows what Peter wants improved.
-      # APP_URL is the deployed Vercel URL; if unset or unreachable this is a no-op.
+      # Pull the live wishlist so Claude knows what Peter wants improved, and
+      # seed a default PR body that Claude can overwrite with its own summary.
       - name: Gather improvement input
         env:
           APP_URL: ${{ vars.APP_URL }}
@@ -45,15 +45,19 @@ jobs:
             echo "(APP_URL not set — no wishlist available)" >> improvement-input.md
           fi
           cat improvement-input.md
+          echo "Automated daily improvement. Review the diff and merge to deploy." > "$RUNNER_TEMP/pr-body.md"
 
-      - name: Run Claude to make an improvement and open a PR
+      # Claude edits files only — no git. A later step turns the working-tree
+      # changes into a pull request. Bash is restricted so it can build but not
+      # touch git.
+      - name: Claude makes an improvement
         uses: anthropics/claude-code-action@v1
         with:
-          # Authenticates with Peter's Claude subscription (Max) instead of
-          # pay-as-you-go API billing. Generate with `claude setup-token` and
-          # store as the CLAUDE_CODE_OAUTH_TOKEN repo secret.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: "--max-turns 40 --model claude-opus-4-8"
+          claude_args: >-
+            --max-turns 40
+            --model claude-opus-4-8
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(npm:*),Bash(node:*),Bash(ls:*),Bash(cat:*)"
           prompt: |
             You are the daily self-improvement agent for this repository.
             Read CLAUDE.md for the project overview and the rules of the
@@ -62,11 +66,20 @@ jobs:
 
             Then:
             1. Choose ONE small, safe, high-value improvement (prefer wishlist items).
-            2. Create a new branch named improve/<short-slug>.
-            3. Implement the change with a small, focused diff.
-            4. Run `npm run build` and fix any errors until it passes.
-            5. Commit and push the branch, then open a pull request with `gh`
-               describing what you changed and why.
+            2. Implement it with a small, focused diff by editing files.
+            3. Run `npm run build` and fix any errors until it passes.
+            4. Write a short markdown summary (what you changed and why) to the
+               file ${{ runner.temp }}/pr-body.md using the Write tool, overwriting it.
 
-            Do NOT commit to the default branch. Do NOT delete features or user
-            data. If nothing is worth changing today, do nothing and open no PR.
+            Do NOT use git, and do NOT commit — just leave your edits in the
+            working tree. A later step opens the pull request. Do not delete
+            features or user data. If nothing is worth changing, make no edits.
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: improve/run-${{ github.run_number }}
+          delete-branch: true
+          title: "Daily improvement #${{ github.run_number }}"
+          commit-message: "Daily self-improvement #${{ github.run_number }}"
+          body-path: ${{ runner.temp }}/pr-body.md

@@ -43,3 +43,6 @@ next-env.d.ts
 # local sqlite database (dev only)
 local.db
 local.db-*
+
+# runtime input for the self-improvement workflow (fetched each run)
+improvement-input.md
