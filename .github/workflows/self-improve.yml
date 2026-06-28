@@ -1,0 +1,71 @@
+name: Daily self-improvement
+
+# Runs once a day (and on demand). Claude reads Peter's wishlist + the codebase,
+# makes ONE small improvement, and opens a pull request. Merging the PR is how
+# Peter approves; merge auto-deploys via Vercel.
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # 08:00 UTC daily
+  workflow_dispatch: {} # lets you trigger it manually from the Actions tab
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  improve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Pull the live wishlist so Claude knows what Peter wants improved.
+      # APP_URL is the deployed Vercel URL; if unset or unreachable this is a no-op.
+      - name: Gather improvement input
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          echo "# Wishlist (most recent first)" > improvement-input.md
+          if [ -n "$APP_URL" ]; then
+            curl -fsS "$APP_URL/api/wishlist" \
+              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{for(const w of JSON.parse(s)){console.log('- '+w.body)}}catch{}})" \
+              >> improvement-input.md || echo "(could not fetch wishlist)" >> improvement-input.md
+          else
+            echo "(APP_URL not set — no wishlist available)" >> improvement-input.md
+          fi
+          cat improvement-input.md
+
+      - name: Run Claude to make an improvement and open a PR
+        uses: anthropics/claude-code-action@v1
+        with:
+          # Authenticates with Peter's Claude subscription (Max) instead of
+          # pay-as-you-go API billing. Generate with `claude setup-token` and
+          # store as the CLAUDE_CODE_OAUTH_TOKEN repo secret.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: "--max-turns 40 --model claude-opus-4-8"
+          prompt: |
+            You are the daily self-improvement agent for this repository.
+            Read CLAUDE.md for the project overview and the rules of the
+            self-improvement loop, and read improvement-input.md for Peter's
+            wishlist.
+
+            Then:
+            1. Choose ONE small, safe, high-value improvement (prefer wishlist items).
+            2. Create a new branch named improve/<short-slug>.
+            3. Implement the change with a small, focused diff.
+            4. Run `npm run build` and fix any errors until it passes.
+            5. Commit and push the branch, then open a pull request with `gh`
+               describing what you changed and why.
+
+            Do NOT commit to the default branch. Do NOT delete features or user
+            data. If nothing is worth changing today, do nothing and open no PR.
