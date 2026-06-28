@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   if (!authed(req))
     return NextResponse.json({ error: "bad passcode" }, { status: 401 });
 
-  const { action, number } = await req.json();
+  const { action, number, title, feedback } = await req.json();
   try {
     if (action === "run") await dispatchRun();
     else if (action === "merge") {
@@ -103,7 +103,21 @@ export async function POST(req: NextRequest) {
           args: [Number(m[1])],
         });
     } else if (action === "close") await closePR(number);
-    else return NextResponse.json({ error: "unknown action" }, { status: 400 });
+    else if (action === "revise") {
+      // "Request a different solution": dismiss this proposal and feed the
+      // request back to the agent as a wishlist item, so the next run retries
+      // with a different approach.
+      const note = String(feedback || "").trim();
+      const what = String(title || `PR #${number}`).trim();
+      const body =
+        `Re-do the change proposed in PR #${number} ("${what}") with a different approach.` +
+        (note ? ` What to change: ${note}` : "");
+      await db().execute({
+        sql: "INSERT INTO wishlist (body) VALUES (?)",
+        args: [body],
+      });
+      await closePR(number);
+    } else return NextResponse.json({ error: "unknown action" }, { status: 400 });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : String(e) },
