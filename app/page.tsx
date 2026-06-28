@@ -542,6 +542,9 @@ function Manage() {
         )}
       </section>
 
+      {/* Goals for the agent */}
+      <AgentGoals />
+
       {/* Stats */}
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
@@ -647,6 +650,50 @@ function Manage() {
         </ul>
       </section>
     </div>
+  );
+}
+
+// Goals/directions for the self-improvement agent. Writes to the same wishlist
+// the daily run reads, so anything added here is picked up on the next run.
+function AgentGoals() {
+  const [rows, setRows] = useState<Row[]>([]);
+  const load = () => api("wishlist").then(setRows);
+  useEffect(() => {
+    load();
+  }, []);
+  return (
+    <section>
+      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        Goals for the agent
+      </h2>
+      <p className="mb-2 text-xs text-zinc-400">
+        Tell the daily agent what to build or improve. Each item is picked up on
+        the next run, and proposed back to you as a pull request above.
+      </p>
+      <AddRow
+        placeholder="e.g. Add a weekly review summary on the home screen…"
+        onAdd={async (body) => {
+          await api("wishlist", "POST", { body });
+          load();
+        }}
+      />
+      <ul className="space-y-2">
+        {rows.map((w) => (
+          <li
+            key={String(w.id)}
+            className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/20"
+          >
+            <span className="flex-1 whitespace-pre-wrap">{String(w.body)}</span>
+            <Del
+              onClick={async () => {
+                await api("wishlist", "DELETE", { id: w.id });
+                load();
+              }}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
