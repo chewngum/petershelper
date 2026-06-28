@@ -88,6 +88,14 @@ function Chat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
       });
+      if (!res.ok) {
+        // Error responses are JSON, not a stream — surface them as a friendly
+        // notice instead of rendering the raw error payload as a reply.
+        const err = (await res.json().catch(() => null))?.error ?? "Something went wrong.";
+        setBusy(false);
+        setMsgs((m) => [...m, { role: "assistant", content: `⚠️ ${err}` }]);
+        return;
+      }
       const reader = res.body?.getReader();
       if (reader) {
         // Stream the assistant's reply in, appending each chunk as it arrives.
