@@ -132,13 +132,15 @@ export async function POST(req: NextRequest) {
   const client = new Anthropic();
   const system = `You are Peter's personal life assistant inside an app called PetersHelper. Be concise and proactive. When the user mentions something to do, remember, track, or aim for, use the matching tool to record it — don't just acknowledge it. Current state:\n${await context()}`;
 
-  // Stream the reply back token-by-token. We run the same manual tool-use loop
-  // as before, but pipe each text delta to the client as it's generated and only
-  // persist the final assistant message once the loop is done.
+  // Stream the reply back token-by-token. Same manual tool-use loop, piping each
+  // text delta to the client as it's generated, and persisting the final
+  // assistant message plus token usage once the loop is done.
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let reply = "";
+      let inTok = 0;
+      let outTok = 0;
       try {
         for (let i = 0; i < 6; i++) {
           const s = client.messages.stream({
@@ -153,6 +155,8 @@ export async function POST(req: NextRequest) {
             controller.enqueue(encoder.encode(delta));
           });
           const res = await s.finalMessage();
+          inTok += res.usage.input_tokens;
+          outTok += res.usage.output_tokens;
           messages.push({ role: "assistant", content: res.content });
 
           if (res.stop_reason !== "tool_use") break;
@@ -182,6 +186,10 @@ export async function POST(req: NextRequest) {
         await c.execute({
           sql: "INSERT INTO messages (role, content) VALUES ('assistant', ?)",
           args: [reply],
+        });
+        await c.execute({
+          sql: "INSERT INTO usage (kind, model, input_tokens, output_tokens) VALUES ('chat', ?, ?, ?)",
+          args: [MODEL, inTok, outTok],
         });
         controller.close();
       }

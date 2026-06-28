@@ -77,6 +77,25 @@ which would burn through Pro limits quickly.
 The workflow ([.github/workflows/self-improve.yml](.github/workflows/self-improve.yml))
 runs daily at 08:00 UTC, and you can trigger it any time from the **Actions** tab.
 
+## The Manage tab (in-app control center)
+
+The **Manage** tab lets you run and oversee the self-improvement loop from inside
+the app — no GitHub or terminal needed:
+
+- **Status & control** — see the last run, and trigger a new improvement on demand.
+- **Proposals** — review each open PR and **Approve & deploy** (merge) or **Dismiss** (close).
+- **History & statistics** — every run/PR with its state, plus success counts.
+- **Usage** — chat API tokens used and estimated cost.
+
+It's protected by a passcode. To enable it, set two env vars (locally in
+`.env.local`, in production in Vercel):
+
+- `MANAGE_PASSCODE` — any secret; you'll enter it to unlock the tab.
+- `GH_PAT` — a **GitHub fine-grained token** ([create one](https://github.com/settings/tokens?type=beta))
+  scoped to this repo with **Actions: Read and write**, **Pull requests: Read and
+  write**, **Contents: Read**. Without it the tab still shows usage stats but the
+  run/PR controls are disabled.
+
 ## Project layout
 
 | Path | What |

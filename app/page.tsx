@@ -4,7 +4,15 @@ import { useEffect, useRef, useState } from "react";
 
 type Row = Record<string, unknown>;
 
-const TABS = ["Chat", "Tasks", "Habits", "Goals", "Notes", "Wishlist"] as const;
+const TABS = [
+  "Chat",
+  "Tasks",
+  "Habits",
+  "Goals",
+  "Notes",
+  "Wishlist",
+  "Manage",
+] as const;
 type Tab = (typeof TABS)[number];
 
 async function api(path: string, method = "GET", body?: unknown) {
@@ -48,6 +56,7 @@ export default function Home() {
         {tab === "Goals" && <Goals />}
         {tab === "Notes" && <Notes />}
         {tab === "Wishlist" && <Wishlist />}
+        {tab === "Manage" && <Manage />}
       </main>
     </div>
   );
@@ -375,6 +384,304 @@ function Wishlist() {
         ))}
       </ul>
     </div>
+  );
+}
+
+type ManageData = {
+  latestRun: Row | null;
+  runs: Row[];
+  prs: Row[];
+  stats: Record<string, number | boolean>;
+  usage: Record<string, number>;
+  githubError: string | null;
+};
+
+function Manage() {
+  const [passcode, setPasscode] = useState<string>("");
+  const [entered, setEntered] = useState(false);
+  const [data, setData] = useState<ManageData | null>(null);
+  const [error, setError] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("ph_passcode");
+    if (saved) {
+      setPasscode(saved);
+      setEntered(true);
+    }
+  }, []);
+
+  const load = async (code: string) => {
+    setError("");
+    const res = await fetch("/api/manage", { headers: { "x-passcode": code } });
+    if (res.status === 401) {
+      setError("Wrong passcode.");
+      setEntered(false);
+      localStorage.removeItem("ph_passcode");
+      return;
+    }
+    if (!res.ok) {
+      setError((await res.json().catch(() => ({})))?.error ?? "Error");
+      setData(null);
+      return;
+    }
+    localStorage.setItem("ph_passcode", code);
+    setData(await res.json());
+  };
+
+  useEffect(() => {
+    if (entered && passcode) load(passcode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entered]);
+
+  const act = async (action: string, number?: number) => {
+    setBusy(true);
+    const res = await fetch("/api/manage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-passcode": passcode },
+      body: JSON.stringify({ action, number }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const e = (await res.json().catch(() => ({})))?.error ?? "Action failed";
+      setError(String(e));
+      return;
+    }
+    setError("");
+    setTimeout(() => load(passcode), 1500); // give GitHub a moment
+  };
+
+  if (!entered) {
+    return (
+      <div className="mx-auto max-w-sm pt-8">
+        <p className="mb-3 text-sm text-zinc-500">
+          Enter your management passcode.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="password"
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && setEntered(true)}
+            className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            placeholder="passcode"
+          />
+          <button
+            onClick={() => setEntered(true)}
+            className="rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
+          >
+            Unlock
+          </button>
+        </div>
+        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <p className="pt-6 text-sm text-zinc-500">
+        {error || "Loading…"}
+        {error && (
+          <button
+            onClick={() => {
+              setEntered(false);
+              localStorage.removeItem("ph_passcode");
+            }}
+            className="ml-2 underline"
+          >
+            re-enter passcode
+          </button>
+        )}
+      </p>
+    );
+  }
+
+  const s = data.stats;
+  const u = data.usage;
+  const openPrs = data.prs.filter((p) => p.state === "open");
+
+  return (
+    <div className="space-y-6 py-2">
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
+      {/* Status + control */}
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Status
+          </h2>
+          <button
+            onClick={() => act("run")}
+            disabled={busy || !!s.runInProgress}
+            className="rounded-full bg-green-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          >
+            {s.runInProgress ? "Run in progress…" : "Run improvement now"}
+          </button>
+        </div>
+        {data.latestRun ? (
+          <p className="text-sm">
+            Last run #{String(data.latestRun.run_number)} —{" "}
+            <StatusBadge run={data.latestRun} />{" "}
+            <a
+              href={String(data.latestRun.html_url)}
+              target="_blank"
+              className="text-zinc-400 underline"
+            >
+              logs
+            </a>
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-500">No runs yet.</p>
+        )}
+        {data.githubError && (
+          <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950/30">
+            GitHub not connected: {data.githubError}. Set the <code>GH_PAT</code>{" "}
+            env var to enable run/PR controls.
+          </p>
+        )}
+      </section>
+
+      {/* Stats */}
+      <section>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Statistics
+        </h2>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <Stat label="Runs" value={Number(s.runsTotal)} />
+          <Stat label="Succeeded" value={Number(s.runsSucceeded)} />
+          <Stat label="Failed" value={Number(s.runsFailed)} />
+          <Stat label="PRs merged" value={Number(s.prsMerged)} />
+          <Stat label="PRs open" value={Number(s.prsOpen)} />
+          <Stat label="PRs dismissed" value={Number(s.prsClosed)} />
+        </div>
+      </section>
+
+      {/* Usage */}
+      <section>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Chat API usage
+        </h2>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <Stat label="Messages" value={u.chatMessages} />
+          <Stat
+            label="Tokens"
+            value={u.inputTokens + u.outputTokens}
+          />
+          <Stat label="Est. cost" value={`$${u.estCostUsd.toFixed(3)}`} />
+        </div>
+        <p className="mt-2 text-xs text-zinc-400">
+          Daily self-improvement runs on your Claude subscription (no per-token
+          API cost), so they&apos;re counted as runs above, not tokens here.
+        </p>
+      </section>
+
+      {/* Open proposals */}
+      <section>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Proposals awaiting your approval
+        </h2>
+        {openPrs.length === 0 ? (
+          <p className="text-sm text-zinc-500">Nothing pending.</p>
+        ) : (
+          <ul className="space-y-3">
+            {openPrs.map((p) => (
+              <li
+                key={String(p.number)}
+                className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <a
+                    href={String(p.html_url)}
+                    target="_blank"
+                    className="text-sm font-medium underline"
+                  >
+                    #{String(p.number)} {String(p.title)}
+                  </a>
+                </div>
+                {p.body ? (
+                  <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-xs text-zinc-500">
+                    {String(p.body)}
+                  </p>
+                ) : null}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => act("merge", p.number as number)}
+                    disabled={busy}
+                    className="rounded-lg bg-green-600 px-3 py-1.5 text-xs text-white disabled:opacity-50"
+                  >
+                    Approve &amp; deploy
+                  </button>
+                  <button
+                    onClick={() => act("close", p.number as number)}
+                    disabled={busy}
+                    className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs dark:border-zinc-700"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* History */}
+      <section>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          History
+        </h2>
+        <ul className="space-y-1 text-sm">
+          {data.prs.map((p) => (
+            <li key={String(p.number)} className="flex items-center gap-2">
+              <PrBadge pr={p} />
+              <a
+                href={String(p.html_url)}
+                target="_blank"
+                className="flex-1 truncate underline"
+              >
+                #{String(p.number)} {String(p.title)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-lg bg-zinc-100 p-3 dark:bg-zinc-800">
+      <div className="text-lg font-semibold">{value}</div>
+      <div className="text-xs text-zinc-500">{label}</div>
+    </div>
+  );
+}
+
+function StatusBadge({ run }: { run: Row }) {
+  const status = String(run.status);
+  const conclusion = run.conclusion ? String(run.conclusion) : null;
+  const text = status !== "completed" ? status : (conclusion ?? "done");
+  const color =
+    conclusion === "success"
+      ? "text-green-600"
+      : conclusion === "failure"
+        ? "text-red-600"
+        : "text-amber-600";
+  return <span className={`font-medium ${color}`}>{text}</span>;
+}
+
+function PrBadge({ pr }: { pr: Row }) {
+  const merged = !!pr.merged_at;
+  const open = pr.state === "open";
+  const [label, cls] = merged
+    ? ["merged", "bg-purple-100 text-purple-700"]
+    : open
+      ? ["open", "bg-green-100 text-green-700"]
+      : ["closed", "bg-zinc-200 text-zinc-600"];
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-xs ${cls}`}>{label}</span>
   );
 }
 
