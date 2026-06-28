@@ -239,6 +239,50 @@ function Tasks() {
           </li>
         ))}
       </ul>
+      <CalendarSubscribe />
+    </div>
+  );
+}
+
+// Footer for the Tasks tab: the .ics feed URL that Google Calendar (or any
+// calendar app) can subscribe to, so task due dates show up as all-day events.
+function CalendarSubscribe() {
+  const [url, setUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    setUrl(`${window.location.origin}/api/calendar`);
+  }, []);
+  if (!url) return null;
+  return (
+    <div className="mt-6 rounded-lg border border-zinc-200 p-3 text-xs text-zinc-500 dark:border-zinc-800">
+      <p className="mb-2">
+        📅 <span className="font-medium">Add to Google Calendar.</span> Tasks
+        with a due date show up as all-day events. In Google Calendar, choose{" "}
+        <span className="font-medium">Other calendars → From URL</span> and paste
+        this link:
+      </p>
+      <div className="flex gap-2">
+        <input
+          readOnly
+          value={url}
+          onFocus={(e) => e.currentTarget.select()}
+          className="flex-1 rounded border border-zinc-300 bg-zinc-50 px-2 py-1 font-mono text-[11px] dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <button
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(url);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch {
+              /* clipboard blocked — the field is selectable as a fallback */
+            }
+          }}
+          className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700"
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
     </div>
   );
 }
