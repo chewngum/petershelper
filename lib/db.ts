@@ -65,6 +65,13 @@ export function ensureSchema(): Promise<void> {
           status TEXT NOT NULL DEFAULT 'open',
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )`,
+        `CREATE TABLE IF NOT EXISTS projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          body TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )`,
         `CREATE TABLE IF NOT EXISTS usage (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           kind TEXT NOT NULL,

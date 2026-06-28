@@ -10,6 +10,7 @@ const TABS = [
   "Habits",
   "Goals",
   "Notes",
+  "Projects",
   "Wishlist",
   "Manage",
 ] as const;
@@ -55,6 +56,7 @@ export default function Home() {
         {tab === "Habits" && <Habits />}
         {tab === "Goals" && <Goals />}
         {tab === "Notes" && <Notes />}
+        {tab === "Projects" && <Projects />}
         {tab === "Wishlist" && <Wishlist />}
         {tab === "Manage" && <Manage />}
       </main>
@@ -472,6 +474,129 @@ function Notes() {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// Projects tab: a list of named projects, each with its own editable page —
+// e.g. a board-game design, a walking-tour script, a book of bench photos.
+// Pick a project on the left, write on the right; the page saves on blur.
+function Projects() {
+  const [rows, setRows] = useState<Row[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const load = async (keep?: number) => {
+    const data: Row[] = await api("projects");
+    setRows(data);
+    setSelectedId((cur) => {
+      const next = keep ?? cur;
+      if (next != null && data.some((p) => Number(p.id) === next)) return next;
+      return data.length ? Number(data[0].id) : null;
+    });
+  };
+  useEffect(() => {
+    load();
+  }, []);
+
+  const selected = rows.find((p) => Number(p.id) === selectedId) ?? null;
+
+  return (
+    <div className="flex gap-3">
+      <div className="w-2/5 shrink-0">
+        <AddRow
+          placeholder="New project…"
+          onAdd={async (name) => {
+            const created: Row = await api("projects", "POST", { name });
+            await load(created?.id != null ? Number(created.id) : undefined);
+          }}
+        />
+        {rows.length === 0 ? (
+          <p className="text-sm text-zinc-400">No projects yet.</p>
+        ) : (
+          <ul className="space-y-1">
+            {rows.map((p) => (
+              <li key={String(p.id)} className="flex items-center gap-1">
+                <button
+                  onClick={() => setSelectedId(Number(p.id))}
+                  className={`flex-1 truncate rounded-lg px-2 py-1.5 text-left text-sm ${
+                    Number(p.id) === selectedId
+                      ? "bg-zinc-900 text-white dark:bg-white dark:text-black"
+                      : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  {String(p.name)}
+                </button>
+                <Del
+                  onClick={async () => {
+                    await api("projects", "DELETE", { id: p.id });
+                    load();
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="flex-1">
+        {selected ? (
+          <ProjectEditor
+            key={String(selected.id)}
+            project={selected}
+            onSave={(patch) => api("projects", "PATCH", { id: selected.id, ...patch })}
+            onSaved={() => load(Number(selected.id))}
+          />
+        ) : (
+          <p className="pt-2 text-sm text-zinc-400">
+            Select or create a project to start working on it.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Editable title + body for one project. Saves on blur when changed.
+function ProjectEditor({
+  project,
+  onSave,
+  onSaved,
+}: {
+  project: Row;
+  onSave: (patch: { name?: string; body?: string }) => Promise<unknown>;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(String(project.name ?? ""));
+  const [body, setBody] = useState(String(project.body ?? ""));
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  const save = async (patch: { name?: string; body?: string }) => {
+    await onSave(patch);
+    setSavedAt(new Date().toLocaleTimeString());
+    onSaved();
+  };
+
+  return (
+    <div>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={() => {
+          const v = name.trim();
+          if (v && v !== project.name) save({ name: v });
+        }}
+        className="mb-2 w-full rounded-lg border border-transparent px-2 py-1 text-lg font-semibold outline-none hover:border-zinc-200 focus:border-zinc-400 dark:hover:border-zinc-700"
+      />
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        onBlur={() => {
+          if (body !== project.body) save({ body });
+        }}
+        placeholder="Write your project here — notes, a script, a plan…"
+        className="h-[55vh] w-full resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+      />
+      <p className="mt-1 text-xs text-zinc-400">
+        {savedAt ? `Saved at ${savedAt}` : "Changes save when you click away."}
+      </p>
     </div>
   );
 }
