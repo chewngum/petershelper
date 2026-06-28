@@ -322,7 +322,12 @@ function Habits() {
               {h.doneToday ? "✓" : ""}
             </button>
             <span className="flex-1 text-sm">{String(h.name)}</span>
-            <span className="text-xs text-zinc-400">{String(h.last7)}/7</span>
+            <span
+              className="text-xs text-zinc-400"
+              title="Days completed since you added this habit"
+            >
+              {String(h.done)}/{String(h.totalDays)} days
+            </span>
             <Del onClick={async () => { await api("habits", "DELETE", { id: h.id }); load(); }} />
           </li>
         ))}
