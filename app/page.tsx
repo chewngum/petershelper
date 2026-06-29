@@ -253,6 +253,9 @@ function Tasks() {
           Add
         </button>
       </div>
+      {rows.length === 0 && (
+        <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
+      )}
       <ul className="space-y-1">
         {rows.map((t) => {
           const overdue = !t.done && !!t.due && String(t.due) < today;
@@ -419,6 +422,9 @@ function Habits() {
           Add
         </button>
       </div>
+      {rows.length === 0 && (
+        <p className="text-sm text-zinc-400">No habits yet. Add one above.</p>
+      )}
       <ul className="space-y-1">
         {rows.map((h) => (
           <li
@@ -508,6 +514,9 @@ function Goals() {
           load();
         }}
       />
+      {rows.length === 0 && (
+        <p className="text-sm text-zinc-400">No goals yet. Add one above.</p>
+      )}
       <ul className="space-y-1">
         {rows.map((g) => (
           <li
@@ -551,6 +560,9 @@ function Notes() {
           load();
         }}
       />
+      {rows.length === 0 && (
+        <p className="text-sm text-zinc-400">No notes yet. Add one above.</p>
+      )}
       <ul className="space-y-2">
         {rows.map((n) => (
           <li
