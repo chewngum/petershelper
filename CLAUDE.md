@@ -36,4 +36,4 @@ Every day a GitHub Action runs you against this repo (see [.github/workflows/sel
 4. Run `npm run build` and fix any errors.
 5. Leave the changes in the working tree; the workflow opens a pull request. Peter approves it from the app's **Manage** tab (the "Approve & deploy" button), which merges the PR and deploys it. **Do not push to the default branch directly.**
 
-Guardrails: one improvement per run; keep the change focused and the diff small; never delete user data or features; never commit secrets; if nothing is worth changing, make no edits and the run will open no PR.
+Guardrails: one improvement per run; keep the change focused and the diff small; never delete user data or features; never commit secrets; **never modify files under `.github/`** (the CI workflow can't be pushed by the run's token and you shouldn't rewrite your own CI); if nothing is worth changing, make no edits and the run will open no PR.

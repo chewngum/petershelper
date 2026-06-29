@@ -76,7 +76,16 @@ jobs:
 
             Do NOT use git, and do NOT commit — just leave your edits in the
             working tree. A later step opens the pull request. Do not delete
-            features or user data. If nothing is worth changing, make no edits.
+            features or user data. Never modify files under `.github/` (the CI
+            workflow that runs you). If nothing is worth changing, make no edits.
+
+      # Hard guard: the Action's token can't push changes to workflow files, and
+      # the agent shouldn't be rewriting its own CI anyway — discard any edits
+      # under .github/ before opening the PR so a stray edit can't break the run.
+      - name: Protect CI config from self-edits
+        run: |
+          git checkout -- .github 2>/dev/null || true
+          git clean -fd .github 2>/dev/null || true
 
       # Open the proposal as a PR. Peter approves it from the app's Manage tab
       # (the Approve & deploy button), which merges it and triggers a deploy.
