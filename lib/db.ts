@@ -1,4 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
+import { seedProjects } from "./seed";
 
 // One shared libSQL client. In production set TURSO_DATABASE_URL (and
 // TURSO_AUTH_TOKEN) to a Turso database; locally we fall back to a SQLite
@@ -87,6 +88,8 @@ export function ensureSchema(): Promise<void> {
     // exist in production. ALTER TABLE ADD COLUMN throws if the column is
     // already there, so we run each one tolerantly.
     await addColumnIfMissing(c, "habits", "minutes", "INTEGER");
+    // One-time, non-destructive content seeds (only insert when missing).
+    await seedProjects(c);
   })();
   return _ready;
 }
