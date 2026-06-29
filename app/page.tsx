@@ -204,6 +204,14 @@ function AddRow({ placeholder, onAdd }: { placeholder: string; onAdd: (v: string
   );
 }
 
+// Local YYYY-MM-DD for "today", to compare against task due dates (which are
+// stored as plain dates). Using the local date avoids off-by-one near midnight
+// that a UTC-based toISOString() would cause.
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
@@ -212,6 +220,7 @@ function Tasks() {
   useEffect(() => {
     load();
   }, []);
+  const today = todayStr();
   const add = async () => {
     if (!title.trim()) return;
     await api("tasks", "POST", { title: title.trim(), due: due || null });
@@ -245,7 +254,9 @@ function Tasks() {
         </button>
       </div>
       <ul className="space-y-1">
-        {rows.map((t) => (
+        {rows.map((t) => {
+          const overdue = !t.done && !!t.due && String(t.due) < today;
+          return (
           <li
             key={String(t.id)}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900"
@@ -260,9 +271,15 @@ function Tasks() {
             />
             <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
               {String(t.title)}
+              {overdue && (
+                <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                  overdue
+                </span>
+              )}
             </span>
             <DueField
               value={t.due ? String(t.due) : ""}
+              overdue={overdue}
               onSave={async (d) => {
                 await api("tasks", "PATCH", { id: t.id, due: d });
                 load();
@@ -270,7 +287,8 @@ function Tasks() {
             />
             <Del onClick={async () => { await api("tasks", "DELETE", { id: t.id }); load(); }} />
           </li>
-        ))}
+          );
+        })}
       </ul>
       <CalendarSubscribe />
     </div>
@@ -282,9 +300,11 @@ function Tasks() {
 function DueField({
   value,
   onSave,
+  overdue = false,
 }: {
   value: string;
   onSave: (d: string) => void;
+  overdue?: boolean;
 }) {
   const [v, setV] = useState(value);
   useEffect(() => {
@@ -298,9 +318,17 @@ function DueField({
         onSave(e.target.value);
       }}
       type="date"
-      title="Due date — shows on your calendar feed (blank to clear)"
+      title={
+        overdue
+          ? "Overdue — this due date has passed"
+          : "Due date — shows on your calendar feed (blank to clear)"
+      }
       className={`rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-zinc-300 focus:border-zinc-500 focus:outline-none dark:hover:border-zinc-700 ${
-        v ? "text-zinc-500" : "text-zinc-300"
+        overdue
+          ? "font-medium text-red-600 dark:text-red-400"
+          : v
+            ? "text-zinc-500"
+            : "text-zinc-300"
       }`}
     />
   );
