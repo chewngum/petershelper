@@ -569,12 +569,60 @@ function Notes() {
             key={String(n.id)}
             className="flex items-start gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
           >
-            <span className="flex-1 whitespace-pre-wrap">{String(n.body)}</span>
+            <EditableNote
+              value={String(n.body)}
+              onSave={async (body) => {
+                await api("notes", "PATCH", { id: n.id, body });
+                load();
+              }}
+            />
             <Del onClick={async () => { await api("notes", "DELETE", { id: n.id }); load(); }} />
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+// A note's body: reads as plain text, becomes a textarea on click and saves on
+// blur. A blank edit is discarded (use the ✕ button to delete a note instead).
+function EditableNote({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (body: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        title="Click to edit"
+        className="flex-1 cursor-text whitespace-pre-wrap"
+      >
+        {value}
+      </span>
+    );
+  }
+  return (
+    <textarea
+      autoFocus
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        const next = v.trim();
+        if (next && next !== value) onSave(next);
+        else setV(value);
+      }}
+      rows={Math.max(2, value.split("\n").length)}
+      className="flex-1 resize-y rounded border border-zinc-300 bg-transparent px-2 py-1 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+    />
   );
 }
 
