@@ -47,6 +47,22 @@ const tools: Anthropic.Tool[] = [
       required: ["title"],
     },
   },
+  {
+    name: "add_project",
+    description:
+      "Start a new project — a larger piece of work with its own editable page (e.g. a board-game design, a trip plan, a piece of writing). Use when the user wants to begin or capture an ongoing project.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Short project name" },
+        body: {
+          type: "string",
+          description: "Optional starting notes or outline for the project",
+        },
+      },
+      required: ["name"],
+    },
+  },
 ];
 
 async function runTool(name: string, input: Record<string, unknown>): Promise<string> {
@@ -76,6 +92,12 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
         args: [String(input.title)],
       });
       return `Added goal: ${input.title}`;
+    case "add_project":
+      await c.execute({
+        sql: "INSERT INTO projects (name, body) VALUES (?, ?)",
+        args: [String(input.name), (input.body as string) ?? ""],
+      });
+      return `Started project: ${input.name}`;
     default:
       return `Unknown tool: ${name}`;
   }
@@ -83,15 +105,17 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
 
 async function context(): Promise<string> {
   const c = db();
-  const [tasks, goals, habits] = await Promise.all([
+  const [tasks, goals, habits, projects] = await Promise.all([
     c.execute("SELECT title, done FROM tasks WHERE done = 0 LIMIT 20"),
     c.execute("SELECT title FROM goals WHERE status = 'active' LIMIT 20"),
     c.execute("SELECT name FROM habits LIMIT 20"),
+    c.execute("SELECT name FROM projects ORDER BY updated_at DESC LIMIT 20"),
   ]);
   return [
     `Open tasks: ${tasks.rows.map((r) => r.title).join("; ") || "none"}`,
     `Active goals: ${goals.rows.map((r) => r.title).join("; ") || "none"}`,
     `Habits: ${habits.rows.map((r) => r.name).join("; ") || "none"}`,
+    `Projects: ${projects.rows.map((r) => r.name).join("; ") || "none"}`,
   ].join("\n");
 }
 
