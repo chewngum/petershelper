@@ -19,6 +19,21 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+// Edit a note's text in place.
+export async function PATCH(req: NextRequest) {
+  await ensureSchema();
+  const { id, body } = await req.json();
+  if (id == null)
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (typeof body !== "string" || !body.trim())
+    return NextResponse.json({ error: "body required" }, { status: 400 });
+  await db().execute({
+    sql: "UPDATE notes SET body = ? WHERE id = ?",
+    args: [body.trim(), id],
+  });
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(req: NextRequest) {
   await ensureSchema();
   const { id } = await req.json();
