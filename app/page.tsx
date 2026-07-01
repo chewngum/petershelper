@@ -259,6 +259,7 @@ function Tasks() {
       <ul className="space-y-1">
         {rows.map((t) => {
           const overdue = !t.done && !!t.due && String(t.due) < today;
+          const dueToday = !t.done && !!t.due && String(t.due) === today;
           return (
           <li
             key={String(t.id)}
@@ -279,10 +280,16 @@ function Tasks() {
                   overdue
                 </span>
               )}
+              {dueToday && (
+                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                  today
+                </span>
+              )}
             </span>
             <DueField
               value={t.due ? String(t.due) : ""}
               overdue={overdue}
+              dueToday={dueToday}
               onSave={async (d) => {
                 await api("tasks", "PATCH", { id: t.id, due: d });
                 load();
@@ -304,10 +311,12 @@ function DueField({
   value,
   onSave,
   overdue = false,
+  dueToday = false,
 }: {
   value: string;
   onSave: (d: string) => void;
   overdue?: boolean;
+  dueToday?: boolean;
 }) {
   const [v, setV] = useState(value);
   useEffect(() => {
@@ -324,14 +333,18 @@ function DueField({
       title={
         overdue
           ? "Overdue — this due date has passed"
-          : "Due date — shows on your calendar feed (blank to clear)"
+          : dueToday
+            ? "Due today"
+            : "Due date — shows on your calendar feed (blank to clear)"
       }
       className={`rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-zinc-300 focus:border-zinc-500 focus:outline-none dark:hover:border-zinc-700 ${
         overdue
           ? "font-medium text-red-600 dark:text-red-400"
-          : v
-            ? "text-zinc-500"
-            : "text-zinc-300"
+          : dueToday
+            ? "font-medium text-amber-700 dark:text-amber-400"
+            : v
+              ? "text-zinc-500"
+              : "text-zinc-300"
       }`}
     />
   );
