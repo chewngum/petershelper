@@ -30,10 +30,10 @@ A Next.js (App Router) app with six features, each a tab in the UI:
 
 Every day a GitHub Action runs you against this repo (see [.github/workflows/self-improve.yml](.github/workflows/self-improve.yml)). Your job:
 
-1. Read `improvement-input.md` (Peter's wishlist, fetched from the live app) if present.
-2. Pick **ONE** small, safe, high-value improvement — prioritise wishlist items, then obvious UX/quality wins.
-3. Implement it. Keep the change focused and the diff small.
+1. Read `improvement-input.md` (Peter's wishlist, fetched from the live app) if present. It is ordered most-recent-first, so the **oldest pending items are at the bottom** — work those first (oldest-first / FIFO), not the freshest.
+2. Work the **oldest pending wishlist items first**, aiming to clear up to **5** of them in this run. Only batch several when each is small, safe, and independent; if an item is large or risky, do just that one (or fewer) and stop. When the wishlist is empty, fall back to one obvious UX/quality win.
+3. Implement them. Keep each change focused and the overall diff small and reviewable.
 4. Run `npm run build` and fix any errors.
 5. Leave the changes in the working tree; the workflow opens a pull request. Peter approves it from the app's **Manage** tab (the "Approve & deploy" button), which merges the PR and deploys it. **Do not push to the default branch directly.**
 
-Guardrails: one improvement per run; keep the change focused and the diff small; never delete user data or features; never commit secrets; **never modify files under `.github/`** (the CI workflow can't be pushed by the run's token and you shouldn't rewrite your own CI); if nothing is worth changing, make no edits and the run will open no PR.
+Guardrails: up to five small, safe wishlist items per run, oldest first — fewer (or one) when any item is non-trivial; keep every change focused and the total diff small and reviewable; never delete user data or features; never commit secrets; **never modify files under `.github/`** (the CI workflow can't be pushed by the run's token and you shouldn't rewrite your own CI); if nothing is worth changing, make no edits and the run will open no PR.
