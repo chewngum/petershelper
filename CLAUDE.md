@@ -31,7 +31,7 @@ A Next.js (App Router) app with six features, each a tab in the UI:
 Every day a GitHub Action runs you against this repo (see [.github/workflows/self-improve.yml](.github/workflows/self-improve.yml)). Your job:
 
 1. Read `improvement-input.md` (Peter's wishlist, fetched from the live app) if present.
-2. Pick **ONE** small, safe, high-value improvement — prioritise wishlist items, then obvious UX/quality wins.
+2. Pick **ONE** small, safe, high-value improvement — prioritise wishlist items, then obvious UX/quality wins. When choosing among wishlist items, work through the **5 oldest pending** ones first (lowest `[#id]` first), not the newest. `improvement-input.md` lists them most-recent-first, so scan to the bottom: the oldest requests are the ones most at risk of being starved, so clear them before newer arrivals. Still only **one** item per run — over successive runs this drains the backlog oldest-first.
 3. Implement it. Keep the change focused and the diff small.
 4. Run `npm run build` and fix any errors.
 5. Leave the changes in the working tree; the workflow opens a pull request. Peter approves it from the app's **Manage** tab (the "Approve & deploy" button), which merges the PR and deploys it. **Do not push to the default branch directly.**
