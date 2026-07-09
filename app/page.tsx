@@ -735,6 +735,11 @@ function ProjectEditor({
     onSaved();
   };
 
+  // Live word/character counts for the current draft — handy when the project
+  // is a script, a ruleset, or anything with a length you want to keep an eye on.
+  const words = body.trim() ? body.trim().split(/\s+/).length : 0;
+  const chars = body.length;
+
   return (
     <div>
       <input
@@ -755,9 +760,15 @@ function ProjectEditor({
         placeholder="Write your project here — notes, a script, a plan…"
         className="h-[55vh] w-full resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
       />
-      <p className="mt-1 text-xs text-zinc-400">
-        {savedAt ? `Saved at ${savedAt}` : "Changes save when you click away."}
-      </p>
+      <div className="mt-1 flex items-center justify-between text-xs text-zinc-400">
+        <span>
+          {savedAt ? `Saved at ${savedAt}` : "Changes save when you click away."}
+        </span>
+        <span>
+          {words.toLocaleString()} {words === 1 ? "word" : "words"} ·{" "}
+          {chars.toLocaleString()} {chars === 1 ? "char" : "chars"}
+        </span>
+      </div>
     </div>
   );
 }
