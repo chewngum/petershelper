@@ -687,6 +687,7 @@ function Projects() {
                   {String(p.name)}
                 </button>
                 <Del
+                  confirm={`Delete project “${String(p.name)}” and everything written in it? This can’t be undone.`}
                   onClick={async () => {
                     await api("projects", "DELETE", { id: p.id });
                     load();
@@ -1234,10 +1235,13 @@ function PrBadge({ pr }: { pr: Row }) {
   );
 }
 
-function Del({ onClick }: { onClick: () => void }) {
+function Del({ onClick, confirm }: { onClick: () => void; confirm?: string }) {
   return (
     <button
-      onClick={onClick}
+      onClick={() => {
+        if (confirm && !window.confirm(confirm)) return;
+        onClick();
+      }}
       className="text-zinc-300 hover:text-red-500"
       aria-label="delete"
     >
