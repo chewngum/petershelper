@@ -221,6 +221,9 @@ function Tasks() {
     load();
   }, []);
   const today = todayStr();
+  const open = rows.filter((t) => !t.done).length;
+  const overdue = rows.filter((t) => !t.done && !!t.due && String(t.due) < today).length;
+  const done = rows.length - open;
   const add = async () => {
     if (!title.trim()) return;
     await api("tasks", "POST", { title: title.trim(), due: due || null });
@@ -253,8 +256,16 @@ function Tasks() {
           Add
         </button>
       </div>
-      {rows.length === 0 && (
+      {rows.length === 0 ? (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
+      ) : (
+        <p className="mb-2 text-xs text-zinc-500">
+          {open} open
+          {overdue > 0 && (
+            <span className="text-red-600 dark:text-red-400"> · {overdue} overdue</span>
+          )}
+          {done > 0 && <span className="text-zinc-400"> · {done} done</span>}
+        </p>
       )}
       <ul className="space-y-1">
         {rows.map((t) => {
