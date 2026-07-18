@@ -152,13 +152,21 @@ function Chat() {
         {busy && <div className="text-sm text-zinc-400">thinking…</div>}
         <div ref={endRef} />
       </div>
-      <div className="flex gap-2 pt-2">
-        <input
+      <div className="flex items-end gap-2 pt-2">
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Tell me what you need…"
-          className="flex-1 rounded-full border border-zinc-300 px-4 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+          onKeyDown={(e) => {
+            // Enter sends; Shift+Enter inserts a newline so longer, multi-line
+            // instructions can be written without firing the message early.
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          rows={Math.min(5, Math.max(1, input.split("\n").length))}
+          placeholder="Tell me what you need…  (Shift+Enter for a new line)"
+          className="flex-1 resize-none rounded-2xl border border-zinc-300 px-4 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
         />
         <button
           onClick={send}
