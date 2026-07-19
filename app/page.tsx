@@ -216,11 +216,15 @@ function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [hideDone, setHideDone] = useState(false);
   const load = () => api("tasks").then(setRows);
   useEffect(() => {
     load();
   }, []);
   const today = todayStr();
+  const doneCount = rows.filter((t) => !!t.done).length;
+  const activeCount = rows.length - doneCount;
+  const visible = hideDone ? rows.filter((t) => !t.done) : rows;
   const add = async () => {
     if (!title.trim()) return;
     await api("tasks", "POST", { title: title.trim(), due: due || null });
@@ -256,8 +260,27 @@ function Tasks() {
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
       )}
+      {rows.length > 0 && (
+        <div className="mb-2 flex items-center justify-between text-xs text-zinc-400">
+          <span>
+            {activeCount} active
+            {doneCount > 0 && ` · ${doneCount} done`}
+          </span>
+          {doneCount > 0 && (
+            <button
+              onClick={() => setHideDone((h) => !h)}
+              className="rounded px-1.5 py-0.5 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            >
+              {hideDone ? "Show completed" : "Hide completed"}
+            </button>
+          )}
+        </div>
+      )}
+      {rows.length > 0 && visible.length === 0 && (
+        <p className="text-sm text-zinc-400">All tasks completed — nice.</p>
+      )}
       <ul className="space-y-1">
-        {rows.map((t) => {
+        {visible.map((t) => {
           const overdue = !t.done && !!t.due && String(t.due) < today;
           const dueToday = !t.done && !!t.due && String(t.due) === today;
           return (
