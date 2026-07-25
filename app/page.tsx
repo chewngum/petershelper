@@ -589,7 +589,7 @@ function Notes() {
                 load();
               }}
             />
-            <Del onClick={async () => { await api("notes", "DELETE", { id: n.id }); load(); }} />
+            <Del confirm="Delete this note? This can't be undone." onClick={async () => { await api("notes", "DELETE", { id: n.id }); load(); }} />
           </li>
         ))}
       </ul>
@@ -687,6 +687,7 @@ function Projects() {
                   {String(p.name)}
                 </button>
                 <Del
+                  confirm={`Delete project "${String(p.name)}"? This can't be undone.`}
                   onClick={async () => {
                     await api("projects", "DELETE", { id: p.id });
                     load();
@@ -1234,10 +1235,15 @@ function PrBadge({ pr }: { pr: Row }) {
   );
 }
 
-function Del({ onClick }: { onClick: () => void }) {
+// Small delete (✕) button. Pass `confirm` for items that hold real content
+// (a project page, a note) so a stray click can't wipe them without a prompt.
+function Del({ onClick, confirm }: { onClick: () => void; confirm?: string }) {
   return (
     <button
-      onClick={onClick}
+      onClick={() => {
+        if (confirm && !window.confirm(confirm)) return;
+        onClick();
+      }}
       className="text-zinc-300 hover:text-red-500"
       aria-label="delete"
     >
