@@ -228,6 +228,11 @@ function Tasks() {
     setDue("");
     load();
   };
+  // At-a-glance counts so completed tasks piling up don't hide what's left.
+  const remaining = rows.filter((t) => !t.done).length;
+  const overdueCount = rows.filter(
+    (t) => !t.done && !!t.due && String(t.due) < today,
+  ).length;
   return (
     <div>
       <div className="mb-3 flex gap-2">
@@ -255,6 +260,19 @@ function Tasks() {
       </div>
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
+      )}
+      {rows.length > 0 && (
+        <p className="mb-2 text-xs text-zinc-400">
+          {remaining === 0
+            ? "All done — nice work. 🎉"
+            : `${remaining} to do`}
+          {overdueCount > 0 && (
+            <span className="text-red-600 dark:text-red-400">
+              {" · "}
+              {overdueCount} overdue
+            </span>
+          )}
+        </p>
       )}
       <ul className="space-y-1">
         {rows.map((t) => {
