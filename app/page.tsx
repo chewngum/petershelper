@@ -216,6 +216,7 @@ function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [showDone, setShowDone] = useState(false);
   const load = () => api("tasks").then(setRows);
   useEffect(() => {
     load();
@@ -228,6 +229,10 @@ function Tasks() {
     setDue("");
     load();
   };
+  // Keep the working list focused on what's left to do; completed tasks
+  // collapse into an archive (mirrors the Wishlist tab's Pending/Completed).
+  const active = rows.filter((t) => !t.done);
+  const done = rows.filter((t) => t.done);
   return (
     <div>
       <div className="mb-3 flex gap-2">
@@ -256,52 +261,82 @@ function Tasks() {
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
       )}
+      {rows.length > 0 && active.length === 0 && (
+        <p className="text-sm text-zinc-400">All done — nothing left to do. 🎉</p>
+      )}
       <ul className="space-y-1">
-        {rows.map((t) => {
-          const overdue = !t.done && !!t.due && String(t.due) < today;
-          const dueToday = !t.done && !!t.due && String(t.due) === today;
-          return (
-          <li
-            key={String(t.id)}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900"
-          >
-            <input
-              type="checkbox"
-              checked={!!t.done}
-              onChange={async () => {
-                await api("tasks", "PATCH", { id: t.id, done: !t.done });
-                load();
-              }}
-            />
-            <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
-              {String(t.title)}
-              {overdue && (
-                <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                  overdue
-                </span>
-              )}
-              {dueToday && (
-                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                  today
-                </span>
-              )}
-            </span>
-            <DueField
-              value={t.due ? String(t.due) : ""}
-              overdue={overdue}
-              dueToday={dueToday}
-              onSave={async (d) => {
-                await api("tasks", "PATCH", { id: t.id, due: d });
-                load();
-              }}
-            />
-            <Del onClick={async () => { await api("tasks", "DELETE", { id: t.id }); load(); }} />
-          </li>
-          );
-        })}
+        {active.map((t) => (
+          <TaskItem key={String(t.id)} t={t} today={today} onChange={load} />
+        ))}
       </ul>
+      {done.length > 0 && (
+        <>
+          <CollapseHeader
+            open={showDone}
+            onToggle={() => setShowDone((v) => !v)}
+            label={`Completed (${done.length})`}
+          />
+          {showDone && (
+            <ul className="space-y-1">
+              {done.map((t) => (
+                <TaskItem key={String(t.id)} t={t} today={today} onChange={load} />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
       <CalendarSubscribe />
     </div>
+  );
+}
+
+// One task row: checkbox, title with overdue/today badges, inline due-date
+// editor and delete. Shared by the active list and the collapsed archive.
+function TaskItem({
+  t,
+  today,
+  onChange,
+}: {
+  t: Row;
+  today: string;
+  onChange: () => void;
+}) {
+  const overdue = !t.done && !!t.due && String(t.due) < today;
+  const dueToday = !t.done && !!t.due && String(t.due) === today;
+  return (
+    <li className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900">
+      <input
+        type="checkbox"
+        checked={!!t.done}
+        onChange={async () => {
+          await api("tasks", "PATCH", { id: t.id, done: !t.done });
+          onChange();
+        }}
+      />
+      <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
+        {String(t.title)}
+        {overdue && (
+          <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
+            overdue
+          </span>
+        )}
+        {dueToday && (
+          <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+            today
+          </span>
+        )}
+      </span>
+      <DueField
+        value={t.due ? String(t.due) : ""}
+        overdue={overdue}
+        dueToday={dueToday}
+        onSave={async (d) => {
+          await api("tasks", "PATCH", { id: t.id, due: d });
+          onChange();
+        }}
+      />
+      <Del onClick={async () => { await api("tasks", "DELETE", { id: t.id }); onChange(); }} />
+    </li>
   );
 }
 
