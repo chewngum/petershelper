@@ -514,10 +514,42 @@ function MinutesField({
 
 function Goals() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [openCompleted, setOpenCompleted] = useState(false);
   const load = () => api("goals").then(setRows);
   useEffect(() => {
     load();
   }, []);
+  const toggle = async (g: Row) => {
+    await api("goals", "PATCH", {
+      id: g.id,
+      status: g.status === "done" ? "active" : "done",
+    });
+    load();
+  };
+  const del = async (g: Row) => {
+    await api("goals", "DELETE", { id: g.id });
+    load();
+  };
+  const goalItem = (g: Row) => (
+    <li
+      key={String(g.id)}
+      className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+    >
+      <input
+        type="checkbox"
+        checked={g.status === "done"}
+        onChange={() => toggle(g)}
+      />
+      <span className={`flex-1 text-sm ${g.status === "done" ? "text-zinc-400 line-through" : ""}`}>
+        {String(g.title)}
+      </span>
+      <Del onClick={() => del(g)} />
+    </li>
+  );
+  // Active goals stay in view; completed ones fold into an archive so the list
+  // doesn't grow forever (mirrors the Wishlist tab's Pending/Completed split).
+  const active = rows.filter((g) => g.status !== "done");
+  const completed = rows.filter((g) => g.status === "done");
   return (
     <div>
       <AddRow
@@ -530,30 +562,26 @@ function Goals() {
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No goals yet. Add one above.</p>
       )}
-      <ul className="space-y-1">
-        {rows.map((g) => (
-          <li
-            key={String(g.id)}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900"
-          >
-            <input
-              type="checkbox"
-              checked={g.status === "done"}
-              onChange={async () => {
-                await api("goals", "PATCH", {
-                  id: g.id,
-                  status: g.status === "done" ? "active" : "done",
-                });
-                load();
-              }}
-            />
-            <span className={`flex-1 text-sm ${g.status === "done" ? "text-zinc-400 line-through" : ""}`}>
-              {String(g.title)}
-            </span>
-            <Del onClick={async () => { await api("goals", "DELETE", { id: g.id }); load(); }} />
-          </li>
-        ))}
-      </ul>
+      {active.length > 0 && (
+        <ul className="space-y-1">{active.map(goalItem)}</ul>
+      )}
+      {rows.length > 0 && active.length === 0 && (
+        <p className="text-sm text-zinc-400">
+          All goals completed — nice work. 🎉
+        </p>
+      )}
+      {completed.length > 0 && (
+        <>
+          <CollapseHeader
+            open={openCompleted}
+            onToggle={() => setOpenCompleted((v) => !v)}
+            label={`Completed (${completed.length})`}
+          />
+          {openCompleted && (
+            <ul className="space-y-1">{completed.map(goalItem)}</ul>
+          )}
+        </>
+      )}
     </div>
   );
 }
