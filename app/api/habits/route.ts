@@ -35,8 +35,28 @@ function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 }
 
+// Step a YYYY-MM-DD habit day forward/back by n days (parsed as UTC midnight).
+function addDays(day: string, n: number): string {
+  const d = new Date(day + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// Current run of consecutive completed habit-days ending at today. Today not
+// yet being checked off doesn't break the streak — we start counting from
+// yesterday in that case, so the number only drops if a full day was missed.
+function currentStreak(daySet: Set<string>, today: string): number {
+  let cursor = daySet.has(today) ? today : addDays(today, -1);
+  let streak = 0;
+  while (daySet.has(cursor)) {
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
 // Returns each habit with whether it's been checked off today, the number of
-// days completed, and the number of days since the habit was added.
+// days completed, the current streak, and the number of days since it was added.
 export async function GET() {
   await ensureSchema();
   const c = db();
@@ -47,6 +67,7 @@ export async function GET() {
     const days = logs.rows
       .filter((l) => l.habit_id === h.id)
       .map((l) => String(l.day));
+    const daySet = new Set(days);
     // created_at is stored as "YYYY-MM-DD HH:MM:SS" in UTC.
     const createdDay = habitDay(
       new Date(String(h.created_at).replace(" ", "T") + "Z"),
@@ -54,8 +75,9 @@ export async function GET() {
     const totalDays = Math.max(1, daysBetween(createdDay, today) + 1);
     return {
       ...h,
-      doneToday: days.includes(today),
+      doneToday: daySet.has(today),
       done: days.length,
+      streak: currentStreak(daySet, today),
       totalDays,
     };
   });
