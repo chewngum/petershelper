@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type Row = Record<string, unknown>;
 
@@ -273,8 +273,14 @@ function Tasks() {
                 load();
               }}
             />
-            <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
-              {String(t.title)}
+            <TitleField
+              value={String(t.title)}
+              done={!!t.done}
+              onSave={async (title) => {
+                await api("tasks", "PATCH", { id: t.id, title });
+                load();
+              }}
+            >
               {overdue && (
                 <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
                   overdue
@@ -285,7 +291,7 @@ function Tasks() {
                   today
                 </span>
               )}
-            </span>
+            </TitleField>
             <DueField
               value={t.due ? String(t.due) : ""}
               overdue={overdue}
@@ -302,6 +308,63 @@ function Tasks() {
       </ul>
       <CalendarSubscribe />
     </div>
+  );
+}
+
+// Inline title editor for a task. Click the text to edit; Enter or blur saves,
+// Escape cancels. An empty title is rejected and reverts to the original. The
+// overdue/today badges are passed as children so they show while not editing.
+function TitleField({
+  value,
+  done,
+  onSave,
+  children,
+}: {
+  value: string;
+  done: boolean;
+  onSave: (title: string) => void;
+  children?: ReactNode;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  const commit = () => {
+    setEditing(false);
+    const next = v.trim();
+    if (next && next !== value) onSave(next);
+    else setV(value);
+  };
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          else if (e.key === "Escape") {
+            setV(value);
+            setEditing(false);
+          }
+        }}
+        className="flex-1 rounded border border-zinc-300 bg-transparent px-1 py-0.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+      />
+    );
+  }
+  return (
+    <span className={`flex-1 text-sm ${done ? "text-zinc-400 line-through" : ""}`}>
+      <span
+        onClick={() => setEditing(true)}
+        title="Click to edit"
+        className="cursor-text rounded px-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+      >
+        {value}
+      </span>
+      {children}
+    </span>
   );
 }
 
