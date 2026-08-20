@@ -216,6 +216,7 @@ function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [showDone, setShowDone] = useState(false);
   const load = () => api("tasks").then(setRows);
   useEffect(() => {
     load();
@@ -227,6 +228,52 @@ function Tasks() {
     setTitle("");
     setDue("");
     load();
+  };
+  const active = rows.filter((t) => !t.done);
+  const done = rows.filter((t) => t.done);
+  // One task row, shared between the active list and the collapsed "Completed"
+  // archive so both render identically.
+  const renderTask = (t: Row) => {
+    const overdue = !t.done && !!t.due && String(t.due) < today;
+    const dueToday = !t.done && !!t.due && String(t.due) === today;
+    return (
+      <li
+        key={String(t.id)}
+        className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+      >
+        <input
+          type="checkbox"
+          checked={!!t.done}
+          onChange={async () => {
+            await api("tasks", "PATCH", { id: t.id, done: !t.done });
+            load();
+          }}
+        />
+        <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
+          {String(t.title)}
+          {overdue && (
+            <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
+              overdue
+            </span>
+          )}
+          {dueToday && (
+            <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+              today
+            </span>
+          )}
+        </span>
+        <DueField
+          value={t.due ? String(t.due) : ""}
+          overdue={overdue}
+          dueToday={dueToday}
+          onSave={async (d) => {
+            await api("tasks", "PATCH", { id: t.id, due: d });
+            load();
+          }}
+        />
+        <Del onClick={async () => { await api("tasks", "DELETE", { id: t.id }); load(); }} />
+      </li>
+    );
   };
   return (
     <div>
@@ -256,50 +303,17 @@ function Tasks() {
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
       )}
-      <ul className="space-y-1">
-        {rows.map((t) => {
-          const overdue = !t.done && !!t.due && String(t.due) < today;
-          const dueToday = !t.done && !!t.due && String(t.due) === today;
-          return (
-          <li
-            key={String(t.id)}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900"
-          >
-            <input
-              type="checkbox"
-              checked={!!t.done}
-              onChange={async () => {
-                await api("tasks", "PATCH", { id: t.id, done: !t.done });
-                load();
-              }}
-            />
-            <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
-              {String(t.title)}
-              {overdue && (
-                <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                  overdue
-                </span>
-              )}
-              {dueToday && (
-                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                  today
-                </span>
-              )}
-            </span>
-            <DueField
-              value={t.due ? String(t.due) : ""}
-              overdue={overdue}
-              dueToday={dueToday}
-              onSave={async (d) => {
-                await api("tasks", "PATCH", { id: t.id, due: d });
-                load();
-              }}
-            />
-            <Del onClick={async () => { await api("tasks", "DELETE", { id: t.id }); load(); }} />
-          </li>
-          );
-        })}
-      </ul>
+      {active.length > 0 && <ul className="space-y-1">{active.map(renderTask)}</ul>}
+      {done.length > 0 && (
+        <>
+          <CollapseHeader
+            open={showDone}
+            onToggle={() => setShowDone((v) => !v)}
+            label={`Completed (${done.length})`}
+          />
+          {showDone && <ul className="space-y-1">{done.map(renderTask)}</ul>}
+        </>
+      )}
       <CalendarSubscribe />
     </div>
   );
