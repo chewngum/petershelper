@@ -216,11 +216,17 @@ function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [filter, setFilter] = useState<"active" | "all" | "done">("active");
   const load = () => api("tasks").then(setRows);
   useEffect(() => {
     load();
   }, []);
   const today = todayStr();
+  const activeCount = rows.filter((t) => !t.done).length;
+  const doneCount = rows.length - activeCount;
+  const visible = rows.filter((t) =>
+    filter === "all" ? true : filter === "done" ? !!t.done : !t.done,
+  );
   const add = async () => {
     if (!title.trim()) return;
     await api("tasks", "POST", { title: title.trim(), due: due || null });
@@ -253,11 +259,41 @@ function Tasks() {
           Add
         </button>
       </div>
+      {rows.length > 0 && (
+        <div className="mb-2 flex gap-1">
+          {(
+            [
+              ["active", `Active (${activeCount})`],
+              ["all", `All (${rows.length})`],
+              ["done", `Done (${doneCount})`],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`rounded-full px-2.5 py-1 text-xs transition ${
+                filter === key
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-black"
+                  : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
       )}
+      {rows.length > 0 && visible.length === 0 && (
+        <p className="text-sm text-zinc-400">
+          {filter === "active"
+            ? "No active tasks — nicely done. 🎉"
+            : "Nothing here."}
+        </p>
+      )}
       <ul className="space-y-1">
-        {rows.map((t) => {
+        {visible.map((t) => {
           const overdue = !t.done && !!t.due && String(t.due) < today;
           const dueToday = !t.done && !!t.due && String(t.due) === today;
           return (
