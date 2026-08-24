@@ -34,6 +34,16 @@ export async function PATCH(req: NextRequest) {
       args: [body.done ? 1 : 0, id],
     });
   }
+  if ("title" in body) {
+    // Ignore a blank rename (delete the task instead); otherwise save the trim.
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (title) {
+      await db().execute({
+        sql: "UPDATE tasks SET title = ? WHERE id = ?",
+        args: [title, id],
+      });
+    }
+  }
   if ("due" in body) {
     const due =
       typeof body.due === "string" && body.due.trim() ? body.due.trim() : null;
