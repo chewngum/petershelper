@@ -228,6 +228,9 @@ function Tasks() {
     setDue("");
     load();
   };
+  const open = rows.filter((t) => !t.done);
+  const overdueCount = open.filter((t) => !!t.due && String(t.due) < today).length;
+  const dueTodayCount = open.filter((t) => !!t.due && String(t.due) === today).length;
   return (
     <div>
       <div className="mb-3 flex gap-2">
@@ -255,6 +258,23 @@ function Tasks() {
       </div>
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
+      )}
+      {open.length > 0 && (
+        <p className="mb-2 text-xs text-zinc-500">
+          {open.length} open
+          {overdueCount > 0 && (
+            <span className="text-red-600 dark:text-red-400">
+              {" · "}
+              {overdueCount} overdue
+            </span>
+          )}
+          {dueTodayCount > 0 && (
+            <span className="text-amber-700 dark:text-amber-400">
+              {" · "}
+              {dueTodayCount} due today
+            </span>
+          )}
+        </p>
       )}
       <ul className="space-y-1">
         {rows.map((t) => {
