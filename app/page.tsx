@@ -216,6 +216,7 @@ function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [hideDone, setHideDone] = useState(false);
   const load = () => api("tasks").then(setRows);
   useEffect(() => {
     load();
@@ -228,6 +229,12 @@ function Tasks() {
     setDue("");
     load();
   };
+  const doneCount = rows.filter((t) => t.done).length;
+  const openCount = rows.length - doneCount;
+  const overdueCount = rows.filter(
+    (t) => !t.done && !!t.due && String(t.due) < today,
+  ).length;
+  const visible = hideDone ? rows.filter((t) => !t.done) : rows;
   return (
     <div>
       <div className="mb-3 flex gap-2">
@@ -256,8 +263,31 @@ function Tasks() {
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
       )}
+      {rows.length > 0 && (
+        <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
+          <span>
+            {openCount} open
+            {overdueCount > 0 && (
+              <span className="text-red-600 dark:text-red-400">
+                {" "}· {overdueCount} overdue
+              </span>
+            )}{" "}
+            · {doneCount} done
+          </span>
+          {doneCount > 0 && (
+            <label className="flex cursor-pointer items-center gap-1 select-none">
+              <input
+                type="checkbox"
+                checked={hideDone}
+                onChange={(e) => setHideDone(e.target.checked)}
+              />
+              Hide done
+            </label>
+          )}
+        </div>
+      )}
       <ul className="space-y-1">
-        {rows.map((t) => {
+        {visible.map((t) => {
           const overdue = !t.done && !!t.due && String(t.due) < today;
           const dueToday = !t.done && !!t.due && String(t.due) === today;
           return (
