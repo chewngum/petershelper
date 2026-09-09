@@ -27,6 +27,20 @@ async function api(path: string, method = "GET", body?: unknown) {
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("Chat");
+
+  // Restore the last-used tab on load, and remember it when it changes, so a
+  // reload keeps you where you were instead of always bouncing back to Chat.
+  // Read in an effect (not the initial state) to avoid an SSR hydration mismatch.
+  useEffect(() => {
+    const saved = localStorage.getItem("ph_tab");
+    if (saved && (TABS as readonly string[]).includes(saved)) {
+      setTab(saved as Tab);
+    }
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("ph_tab", tab);
+  }, [tab]);
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col">
       <header className="px-4 pt-6 pb-2">
