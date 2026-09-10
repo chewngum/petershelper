@@ -457,7 +457,17 @@ function Habits() {
             >
               {h.doneToday ? "✓" : ""}
             </button>
-            <span className="flex-1 text-sm">{String(h.name)}</span>
+            <span className="flex-1 text-sm">
+              {String(h.name)}
+              {Number(h.streak) > 0 && (
+                <span
+                  className="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-600 dark:bg-orange-950/40 dark:text-orange-400"
+                  title={`${h.streak}-day streak — keep it going!`}
+                >
+                  🔥 {String(h.streak)}
+                </span>
+              )}
+            </span>
             <MinutesField
               value={h.minutes == null ? "" : String(h.minutes)}
               onSave={async (m) => {
