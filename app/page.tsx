@@ -560,10 +560,15 @@ function Goals() {
 
 function Notes() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [query, setQuery] = useState("");
   const load = () => api("notes").then(setRows);
   useEffect(() => {
     load();
   }, []);
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? rows.filter((n) => String(n.body).toLowerCase().includes(q))
+    : rows;
   return (
     <div>
       <AddRow
@@ -573,11 +578,22 @@ function Notes() {
           load();
         }}
       />
+      {rows.length > 0 && (
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search notes…"
+          className="mb-3 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+        />
+      )}
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No notes yet. Add one above.</p>
       )}
+      {rows.length > 0 && shown.length === 0 && (
+        <p className="text-sm text-zinc-400">No notes match “{query.trim()}”.</p>
+      )}
       <ul className="space-y-2">
-        {rows.map((n) => (
+        {shown.map((n) => (
           <li
             key={String(n.id)}
             className="flex items-start gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
