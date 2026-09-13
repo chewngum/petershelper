@@ -28,6 +28,16 @@ export async function PATCH(req: NextRequest) {
   if (id == null)
     return NextResponse.json({ error: "id required" }, { status: 400 });
   // Partial update: only touch the fields that were sent.
+  if ("title" in body) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    // Ignore a blank rename — deleting a task is a separate, explicit action.
+    if (title) {
+      await db().execute({
+        sql: "UPDATE tasks SET title = ? WHERE id = ?",
+        args: [title, id],
+      });
+    }
+  }
   if ("done" in body) {
     await db().execute({
       sql: "UPDATE tasks SET done = ? WHERE id = ?",
