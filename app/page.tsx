@@ -273,8 +273,15 @@ function Tasks() {
                 load();
               }}
             />
-            <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
-              {String(t.title)}
+            <span className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+              <EditableText
+                value={String(t.title)}
+                onSave={async (title) => {
+                  await api("tasks", "PATCH", { id: t.id, title });
+                  load();
+                }}
+                className={`min-w-0 flex-1 truncate ${t.done ? "text-zinc-400 line-through" : ""}`}
+              />
               {overdue && (
                 <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
                   overdue
@@ -302,6 +309,57 @@ function Tasks() {
       </ul>
       <CalendarSubscribe />
     </div>
+  );
+}
+
+// Inline-editable single-line text (used for task titles). Reads as plain
+// text; click to turn it into an input that saves on Enter or blur. A blank
+// edit is discarded (use the ✕ button to delete instead); Escape cancels.
+function EditableText({
+  value,
+  onSave,
+  className = "",
+}: {
+  value: string;
+  onSave: (v: string) => void;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        title="Click to edit"
+        className={`cursor-text ${className}`}
+      >
+        {value}
+      </span>
+    );
+  }
+  return (
+    <input
+      autoFocus
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        const next = v.trim();
+        if (next && next !== value) onSave(next);
+        else setV(value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") {
+          setV(value);
+          setEditing(false);
+        }
+      }}
+      className="min-w-0 flex-1 rounded border border-zinc-300 bg-transparent px-1 py-0.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+    />
   );
 }
 
