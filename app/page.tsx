@@ -64,6 +64,16 @@ export default function Home() {
   );
 }
 
+// Example prompts shown on an empty chat. Clicking one sends it right away, so
+// Peter can discover what the assistant can do (tasks, habits, goals, projects)
+// without having to think of a phrasing first.
+const CHAT_SUGGESTIONS = [
+  "Remind me to call the dentist tomorrow",
+  "Start tracking a daily reading habit",
+  "Set a goal to run a half marathon this year",
+  "Start a project to plan a weekend trip",
+];
+
 function Chat() {
   const [msgs, setMsgs] = useState<Row[]>([]);
   const [input, setInput] = useState("");
@@ -78,8 +88,8 @@ function Chat() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, busy]);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (override?: string) => {
+    const text = (override ?? input).trim();
     if (!text || busy) return;
     setInput("");
     setMsgs((m) => [...m, { role: "user", content: text }]);
@@ -132,10 +142,23 @@ function Chat() {
     <div className="flex h-[70vh] flex-col">
       <div className="flex-1 space-y-3 overflow-y-auto py-2">
         {msgs.length === 0 && (
-          <p className="text-sm text-zinc-400">
-            Try: &ldquo;Remind me to call the dentist tomorrow&rdquo; or
-            &ldquo;Start tracking a reading habit&rdquo;.
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm text-zinc-400">
+              Try one of these, or type your own:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {CHAT_SUGGESTIONS.map((sug) => (
+                <button
+                  key={sug}
+                  onClick={() => send(sug)}
+                  disabled={busy}
+                  className="rounded-full border border-zinc-300 px-3 py-1.5 text-left text-sm text-zinc-600 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  {sug}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {msgs.map((m, i) => (
           <div
@@ -161,7 +184,7 @@ function Chat() {
           className="flex-1 rounded-full border border-zinc-300 px-4 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
         />
         <button
-          onClick={send}
+          onClick={() => send()}
           disabled={busy}
           className="rounded-full bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
