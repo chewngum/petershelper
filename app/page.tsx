@@ -216,11 +216,14 @@ function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
+  const [hideDone, setHideDone] = useState(false);
   const load = () => api("tasks").then(setRows);
   useEffect(() => {
     load();
   }, []);
   const today = todayStr();
+  const doneCount = rows.filter((t) => t.done).length;
+  const visible = hideDone ? rows.filter((t) => !t.done) : rows;
   const add = async () => {
     if (!title.trim()) return;
     await api("tasks", "POST", { title: title.trim(), due: due || null });
@@ -253,11 +256,21 @@ function Tasks() {
           Add
         </button>
       </div>
+      {doneCount > 0 && (
+        <div className="mb-2 flex justify-end">
+          <button
+            onClick={() => setHideDone((v) => !v)}
+            className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+          >
+            {hideDone ? `Show done (${doneCount})` : `Hide done (${doneCount})`}
+          </button>
+        </div>
+      )}
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
       )}
       <ul className="space-y-1">
-        {rows.map((t) => {
+        {visible.map((t) => {
           const overdue = !t.done && !!t.due && String(t.due) < today;
           const dueToday = !t.done && !!t.due && String(t.due) === today;
           return (
