@@ -228,6 +228,15 @@ function Tasks() {
     setDue("");
     load();
   };
+  // At-a-glance counts of what still needs attention, surfaced as a summary
+  // line so Peter doesn't have to scan the whole list to spot overdue work.
+  const open = rows.filter((t) => !t.done).length;
+  const overdueCount = rows.filter(
+    (t) => !t.done && !!t.due && String(t.due) < today,
+  ).length;
+  const dueTodayCount = rows.filter(
+    (t) => !t.done && !!t.due && String(t.due) === today,
+  ).length;
   return (
     <div>
       <div className="mb-3 flex gap-2">
@@ -253,6 +262,23 @@ function Tasks() {
           Add
         </button>
       </div>
+      {open > 0 && (
+        <p className="mb-2 text-xs text-zinc-500">
+          <span className="font-medium">{open}</span> open
+          {overdueCount > 0 && (
+            <span className="text-red-600 dark:text-red-400">
+              {" · "}
+              {overdueCount} overdue
+            </span>
+          )}
+          {dueTodayCount > 0 && (
+            <span className="text-amber-700 dark:text-amber-400">
+              {" · "}
+              {dueTodayCount} due today
+            </span>
+          )}
+        </p>
+      )}
       {rows.length === 0 && (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
       )}
