@@ -458,6 +458,14 @@ function Habits() {
               {h.doneToday ? "✓" : ""}
             </button>
             <span className="flex-1 text-sm">{String(h.name)}</span>
+            {Number(h.streak) > 0 && (
+              <span
+                className="text-xs font-medium text-orange-500"
+                title={`${h.streak}-day streak — days in a row up to today`}
+              >
+                🔥 {String(h.streak)}
+              </span>
+            )}
             <MinutesField
               value={h.minutes == null ? "" : String(h.minutes)}
               onSave={async (m) => {
