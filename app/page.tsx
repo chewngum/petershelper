@@ -274,7 +274,13 @@ function Tasks() {
               }}
             />
             <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
-              {String(t.title)}
+              <EditableTitle
+                value={String(t.title)}
+                onSave={async (title) => {
+                  await api("tasks", "PATCH", { id: t.id, title });
+                  load();
+                }}
+              />
               {overdue && (
                 <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
                   overdue
@@ -346,6 +352,55 @@ function DueField({
               ? "text-zinc-500"
               : "text-zinc-300"
       }`}
+    />
+  );
+}
+
+// A task's title: reads as plain text, becomes a single-line input on click
+// and saves on Enter or blur. A blank edit is discarded (use the ✕ button to
+// delete a task instead); Escape cancels without saving.
+function EditableTitle({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (title: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        title="Click to edit"
+        className="cursor-text"
+      >
+        {value}
+      </span>
+    );
+  }
+  return (
+    <input
+      autoFocus
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        const next = v.trim();
+        if (next && next !== value) onSave(next);
+        else setV(value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") {
+          setV(value);
+          setEditing(false);
+        }
+      }}
+      className="w-full rounded border border-zinc-300 bg-transparent px-1 py-0.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
     />
   );
 }
