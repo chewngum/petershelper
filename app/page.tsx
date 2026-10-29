@@ -273,15 +273,22 @@ function Tasks() {
                 load();
               }}
             />
-            <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
-              {String(t.title)}
+            <span className="flex flex-1 items-center gap-2 text-sm">
+              <EditableTaskTitle
+                value={String(t.title)}
+                done={!!t.done}
+                onSave={async (title) => {
+                  await api("tasks", "PATCH", { id: t.id, title });
+                  load();
+                }}
+              />
               {overdue && (
-                <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
                   overdue
                 </span>
               )}
               {dueToday && (
-                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                   today
                 </span>
               )}
@@ -302,6 +309,57 @@ function Tasks() {
       </ul>
       <CalendarSubscribe />
     </div>
+  );
+}
+
+// A task's title: reads as plain text, becomes an input on click and saves on
+// blur or Enter. A blank edit is discarded (use ✕ to delete a task instead);
+// Escape cancels. Mirrors the inline-edit pattern used for notes and projects.
+function EditableTaskTitle({
+  value,
+  done,
+  onSave,
+}: {
+  value: string;
+  done: boolean;
+  onSave: (title: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        title="Click to edit"
+        className={`min-w-0 flex-1 cursor-text truncate ${done ? "text-zinc-400 line-through" : ""}`}
+      >
+        {value}
+      </span>
+    );
+  }
+  return (
+    <input
+      autoFocus
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        const next = v.trim();
+        if (next && next !== value) onSave(next);
+        else setV(value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        else if (e.key === "Escape") {
+          setV(value);
+          setEditing(false);
+        }
+      }}
+      className="min-w-0 flex-1 rounded border border-zinc-300 bg-transparent px-1 py-0.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+    />
   );
 }
 
