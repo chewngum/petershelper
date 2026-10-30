@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type Row = Record<string, unknown>;
 
@@ -273,19 +273,28 @@ function Tasks() {
                 load();
               }}
             />
-            <span className={`flex-1 text-sm ${t.done ? "text-zinc-400 line-through" : ""}`}>
-              {String(t.title)}
-              {overdue && (
-                <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                  overdue
-                </span>
-              )}
-              {dueToday && (
-                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                  today
-                </span>
-              )}
-            </span>
+            <EditableTitle
+              value={String(t.title)}
+              done={!!t.done}
+              onSave={async (title) => {
+                await api("tasks", "PATCH", { id: t.id, title });
+                load();
+              }}
+              badges={
+                <>
+                  {overdue && (
+                    <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                      overdue
+                    </span>
+                  )}
+                  {dueToday && (
+                    <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                      today
+                    </span>
+                  )}
+                </>
+              }
+            />
             <DueField
               value={t.due ? String(t.due) : ""}
               overdue={overdue}
@@ -346,6 +355,60 @@ function DueField({
               ? "text-zinc-500"
               : "text-zinc-300"
       }`}
+    />
+  );
+}
+
+// A task's title: reads as plain text (with any due-status badges beside it),
+// becomes a single-line input on click and saves on blur or Enter. Escape or a
+// blank edit discards the change (use the ✕ button to delete a task instead).
+function EditableTitle({
+  value,
+  done,
+  badges,
+  onSave,
+}: {
+  value: string;
+  done: boolean;
+  badges?: ReactNode;
+  onSave: (title: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        title="Click to edit"
+        className={`flex-1 cursor-text text-sm ${done ? "text-zinc-400 line-through" : ""}`}
+      >
+        {value}
+        {badges}
+      </span>
+    );
+  }
+  return (
+    <input
+      autoFocus
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => {
+        setEditing(false);
+        const next = v.trim();
+        if (next && next !== value) onSave(next);
+        else setV(value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") {
+          setV(value);
+          setEditing(false);
+        }
+      }}
+      className="flex-1 rounded border border-zinc-300 bg-transparent px-2 py-0.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
     />
   );
 }
