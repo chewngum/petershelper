@@ -465,6 +465,14 @@ function Habits() {
                 load();
               }}
             />
+            {Number(h.streak) > 0 && (
+              <span
+                className="text-xs font-medium text-orange-500"
+                title={`${h.streak}-day streak — consecutive days completed`}
+              >
+                🔥 {String(h.streak)}
+              </span>
+            )}
             <span
               className="text-xs text-zinc-400"
               title="Days completed since you added this habit"
