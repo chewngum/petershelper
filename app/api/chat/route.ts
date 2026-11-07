@@ -154,7 +154,11 @@ export async function POST(req: NextRequest) {
   }));
 
   const client = new Anthropic();
-  const system = `You are Peter's personal life assistant inside an app called PetersHelper. Be concise and proactive. When the user mentions something to do, remember, track, or aim for, use the matching tool to record it — don't just acknowledge it. Current state:\n${await context()}`;
+  // Today's date (server-local), so Claude can resolve relative due dates like
+  // "tomorrow" or "next Friday" into the YYYY-MM-DD the add_task tool expects.
+  const now = new Date();
+  const today = `${now.toLocaleDateString("en-US", { weekday: "long" })}, ${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const system = `You are Peter's personal life assistant inside an app called PetersHelper. Be concise and proactive. When the user mentions something to do, remember, track, or aim for, use the matching tool to record it — don't just acknowledge it. Today is ${today}; use it to turn relative dates ("tomorrow", "next Friday") into the YYYY-MM-DD a due date needs. Current state:\n${await context()}`;
 
   // Stream the reply back token-by-token. Same manual tool-use loop, piping each
   // text delta to the client as it's generated, and persisting the final
