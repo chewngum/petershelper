@@ -128,8 +128,29 @@ function Chat() {
     load();
   };
 
+  const clear = async () => {
+    if (busy || msgs.length === 0) return;
+    if (!window.confirm("Clear the whole conversation? This can't be undone."))
+      return;
+    setMsgs([]);
+    await api("chat", "DELETE");
+    load();
+  };
+
   return (
     <div className="flex h-[70vh] flex-col">
+      {msgs.length > 0 && (
+        <div className="flex justify-end pb-1">
+          <button
+            onClick={clear}
+            disabled={busy}
+            className="text-xs text-zinc-400 hover:text-red-500 disabled:opacity-50"
+            title="Delete all messages and start a new conversation"
+          >
+            Clear chat
+          </button>
+        </div>
+      )}
       <div className="flex-1 space-y-3 overflow-y-auto py-2">
         {msgs.length === 0 && (
           <p className="text-sm text-zinc-400">
