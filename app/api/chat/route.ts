@@ -127,6 +127,14 @@ export async function GET() {
   return NextResponse.json(r.rows);
 }
 
+export async function DELETE() {
+  await ensureSchema();
+  // Clear the conversation history so the user can start fresh. Usage stats
+  // (a separate table) are intentionally left untouched.
+  await db().execute("DELETE FROM messages");
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(req: NextRequest) {
   await ensureSchema();
   if (!process.env.ANTHROPIC_API_KEY)
