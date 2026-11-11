@@ -35,6 +35,25 @@ function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 }
 
+// The YYYY-MM-DD habit day immediately before the given one.
+function prevDay(day: string): string {
+  return new Date(Date.parse(day) - 86_400_000).toISOString().slice(0, 10);
+}
+
+// Current run of consecutive completed days ending today. Today not yet being
+// checked off doesn't break the streak — we count back from yesterday in that
+// case — so an unbroken streak only lapses once a whole day is missed.
+function currentStreak(days: string[], today: string): number {
+  const done = new Set(days);
+  let cursor = done.has(today) ? today : prevDay(today);
+  let streak = 0;
+  while (done.has(cursor)) {
+    streak++;
+    cursor = prevDay(cursor);
+  }
+  return streak;
+}
+
 // Returns each habit with whether it's been checked off today, the number of
 // days completed, and the number of days since the habit was added.
 export async function GET() {
@@ -57,6 +76,7 @@ export async function GET() {
       doneToday: days.includes(today),
       done: days.length,
       totalDays,
+      streak: currentStreak(days, today),
     };
   });
   return NextResponse.json(rows);
