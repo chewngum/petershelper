@@ -212,6 +212,20 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Format a SQLite timestamp (e.g. "2026-11-17 12:34:56", stored as UTC) as a
+// short, friendly local date like "Nov 17, 2026". Returns "" if unparseable.
+function formatDate(s: string) {
+  // datetime('now') has no zone marker; treat it as UTC so it reads correctly
+  // in the user's local time rather than being shifted by the timezone offset.
+  const d = new Date(s.includes("T") ? s : s.replace(" ", "T") + "Z");
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function Tasks() {
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
@@ -580,16 +594,23 @@ function Notes() {
         {rows.map((n) => (
           <li
             key={String(n.id)}
-            className="flex items-start gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+            className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
           >
-            <EditableNote
-              value={String(n.body)}
-              onSave={async (body) => {
-                await api("notes", "PATCH", { id: n.id, body });
-                load();
-              }}
-            />
-            <Del onClick={async () => { await api("notes", "DELETE", { id: n.id }); load(); }} />
+            <div className="flex items-start gap-2">
+              <EditableNote
+                value={String(n.body)}
+                onSave={async (body) => {
+                  await api("notes", "PATCH", { id: n.id, body });
+                  load();
+                }}
+              />
+              <Del onClick={async () => { await api("notes", "DELETE", { id: n.id }); load(); }} />
+            </div>
+            {!!n.created_at && !!formatDate(String(n.created_at)) && (
+              <p className="mt-1.5 text-[11px] text-zinc-400">
+                {formatDate(String(n.created_at))}
+              </p>
+            )}
           </li>
         ))}
       </ul>
