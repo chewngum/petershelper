@@ -228,6 +228,12 @@ function Tasks() {
     setDue("");
     load();
   };
+  // At-a-glance counts, computed from the already-loaded rows.
+  const activeCount = rows.filter((t) => !t.done).length;
+  const overdueCount = rows.filter(
+    (t) => !t.done && !!t.due && String(t.due) < today,
+  ).length;
+  const doneCount = rows.length - activeCount;
   return (
     <div>
       <div className="mb-3 flex gap-2">
@@ -253,8 +259,23 @@ function Tasks() {
           Add
         </button>
       </div>
-      {rows.length === 0 && (
+      {rows.length === 0 ? (
         <p className="text-sm text-zinc-400">No tasks yet. Add one above.</p>
+      ) : (
+        <div className="mb-2 flex items-center gap-3 text-xs text-zinc-500">
+          <span>
+            <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+              {activeCount}
+            </span>{" "}
+            active
+          </span>
+          {overdueCount > 0 && (
+            <span className="font-medium text-red-600 dark:text-red-400">
+              {overdueCount} overdue
+            </span>
+          )}
+          <span>{doneCount} done</span>
+        </div>
       )}
       <ul className="space-y-1">
         {rows.map((t) => {
