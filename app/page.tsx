@@ -582,19 +582,40 @@ function Notes() {
             key={String(n.id)}
             className="flex items-start gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
           >
-            <EditableNote
-              value={String(n.body)}
-              onSave={async (body) => {
-                await api("notes", "PATCH", { id: n.id, body });
-                load();
-              }}
-            />
+            <div className="flex flex-1 flex-col">
+              <EditableNote
+                value={String(n.body)}
+                onSave={async (body) => {
+                  await api("notes", "PATCH", { id: n.id, body });
+                  load();
+                }}
+              />
+              {formatNoteDate(n.created_at) && (
+                <p className="mt-1 text-xs text-zinc-400">
+                  {formatNoteDate(n.created_at)}
+                </p>
+              )}
+            </div>
             <Del onClick={async () => { await api("notes", "DELETE", { id: n.id }); load(); }} />
           </li>
         ))}
       </ul>
     </div>
   );
+}
+
+// Format a note's stored created_at (SQLite UTC "YYYY-MM-DD HH:MM:SS") as a
+// short local date like "Nov 19, 2026". Returns "" for missing/unparseable
+// values so the caller can skip rendering it.
+function formatNoteDate(raw: unknown): string {
+  if (typeof raw !== "string" || !raw) return "";
+  const d = new Date(raw.replace(" ", "T") + "Z");
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 // A note's body: reads as plain text, becomes a textarea on click and saves on
