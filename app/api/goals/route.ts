@@ -23,11 +23,27 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   await ensureSchema();
-  const { id, status } = await req.json();
-  await db().execute({
-    sql: "UPDATE goals SET status = ? WHERE id = ?",
-    args: [status, id],
-  });
+  const body = await req.json();
+  const { id } = body;
+  if (id == null)
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  // Partial update: only touch the fields that were sent.
+  if ("status" in body) {
+    await db().execute({
+      sql: "UPDATE goals SET status = ? WHERE id = ?",
+      args: [body.status, id],
+    });
+  }
+  if ("title" in body) {
+    const title =
+      typeof body.title === "string" ? body.title.trim() : "";
+    if (!title)
+      return NextResponse.json({ error: "title required" }, { status: 400 });
+    await db().execute({
+      sql: "UPDATE goals SET title = ? WHERE id = ?",
+      args: [title, id],
+    });
+  }
   return NextResponse.json({ ok: true });
 }
 

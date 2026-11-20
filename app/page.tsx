@@ -547,14 +547,63 @@ function Goals() {
                 load();
               }}
             />
-            <span className={`flex-1 text-sm ${g.status === "done" ? "text-zinc-400 line-through" : ""}`}>
-              {String(g.title)}
-            </span>
+            <EditableTitle
+              value={String(g.title)}
+              done={g.status === "done"}
+              onSave={async (title) => {
+                await api("goals", "PATCH", { id: g.id, title });
+                load();
+              }}
+            />
             <Del onClick={async () => { await api("goals", "DELETE", { id: g.id }); load(); }} />
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+// A goal's title: reads as plain text, becomes an input on click and saves on
+// blur (or Enter). A blank edit is discarded (use the ✕ button to delete).
+function EditableTitle({
+  value,
+  done,
+  onSave,
+}: {
+  value: string;
+  done: boolean;
+  onSave: (title: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
+  if (!editing) {
+    return (
+      <span
+        onClick={() => setEditing(true)}
+        title="Click to edit"
+        className={`flex-1 cursor-text text-sm ${done ? "text-zinc-400 line-through" : ""}`}
+      >
+        {value}
+      </span>
+    );
+  }
+  return (
+    <input
+      autoFocus
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+      onBlur={() => {
+        setEditing(false);
+        const next = v.trim();
+        if (next && next !== value) onSave(next);
+        else setV(value);
+      }}
+      className="flex-1 rounded border border-zinc-300 bg-transparent px-2 py-0.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700"
+    />
   );
 }
 
